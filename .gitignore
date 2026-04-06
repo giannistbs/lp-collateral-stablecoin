@@ -1,6 +1,7 @@
 # General
 pnpm-debug.log
 node_modules
+.pnpm-store
 .DS_STORE
 .vscode
 
