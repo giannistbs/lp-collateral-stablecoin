@@ -1,0 +1,29 @@
+sequenceDiagram
+    actor User
+    participant VM as VaultManager
+    participant CA as CollateralAdapter
+    participant Oracle as LPOracle
+    participant PG as PriceGuard
+    participant LPUSD as LPUSD Token
+
+    User->>VM: depositAndMint(lpToken, amount, mintAmount)
+    VM->>Oracle: fairLPPrice(lpToken)
+    Oracle->>PG: checkDeviation(spotPrice, twapPrice)
+    alt deviation > 5%
+        PG-->>VM: revert ORACLE_STALE
+        VM-->>User: revert
+    else oracle healthy
+        PG-->>Oracle: ok
+        Oracle-->>VM: priceUSD
+    end
+    VM->>VM: collateralValueUSD = amount * priceUSD
+    VM->>VM: maxMintable = collateralValueUSD * LTV
+    alt mintAmount > maxMintable
+        VM-->>User: revert EXCEEDS_LTV
+    end
+    VM->>CA: transferFrom(User, adapter, amount)
+    CA-->>VM: ok
+    VM->>VM: openOrUpdateVault(user, lpToken, amount, mintAmount)
+    VM->>LPUSD: mint(user, mintAmount - mintFee)
+    VM->>LPUSD: mint(treasury, mintFee)
+    LPUSD-->>User: LPUSD tokens received

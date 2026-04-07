@@ -1,0 +1,31 @@
+sequenceDiagram
+    actor Keeper
+    participant LM as LiquidationManager
+    participant VM as VaultManager
+    participant Oracle as LPOracle
+    participant SP as StabilityPool
+    participant LPUSD as LPUSD Token
+    participant CA as CollateralAdapter
+
+    Keeper->>LM: liquidate(user, lpToken)
+    LM->>VM: getVault(user, lpToken)
+    LM->>Oracle: fairLPPrice(lpToken)
+    LM->>LM: HF = (collateralValue * liqThreshold) / debt
+    alt HF >= 1.0
+        LM-->>Keeper: revert NOT_LIQUIDATABLE
+    end
+    LM->>SP: availableLPUSD()
+    alt SP balance >= vault.debt
+        LM->>SP: burnForLiquidation(vault.debt)
+        SP->>LPUSD: burn(SP, vault.debt)
+        LM->>CA: transferCollateral(SP, collateralAmount)
+        Note over SP: SP depositors receive LP tokens\n(collateral at ~5% discount = reward)
+        LM->>Keeper: emit Liquidated + keeper gas reward
+    else SP insufficient → external path
+        LM->>Keeper: repay LPUSD yourself
+        Keeper->>LPUSD: transferFrom(Keeper, LM, debt)
+        LM->>LPUSD: burn(LM, debt)
+        LM->>CA: transferCollateral(Keeper, collateral * 1.10)
+        Note over Keeper: Keeper earns 10% liquidation bonus
+    end
+    LM->>VM: closeVault(user, lpToken)

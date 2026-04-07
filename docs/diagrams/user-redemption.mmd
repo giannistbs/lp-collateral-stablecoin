@@ -1,0 +1,23 @@
+sequenceDiagram
+    actor Redeemer
+    participant RM as RedemptionManager
+    participant VM as VaultManager
+    participant Oracle as LPOracle
+    participant LPUSD as LPUSD Token
+    participant CA as CollateralAdapter
+
+    Note over Redeemer: LPUSD market price < $1\nArbitrage opportunity
+
+    Redeemer->>RM: redeem(lpusdAmount)
+    RM->>RM: fee = (baseRate + 0.5%) * lpusdAmount
+    RM->>RM: netCollateralValue = lpusdAmount - fee
+    RM->>VM: selectLowestCRVaults(netCollateralValue)
+    loop for each selected vault (lowest CR first)
+        VM->>Oracle: fairLPPrice(vaultLP)
+        VM->>VM: calculate LP amount to cover portion of redemption
+        VM->>VM: reduce vault.debt by portion
+        VM->>CA: transfer(Redeemer, lpAmount)
+    end
+    RM->>LPUSD: burn(Redeemer, lpusdAmount)
+    RM->>RM: baseRate += spike(redemptionAmount)
+    Note over Redeemer: Receives $1 of LP collateral\nper LPUSD burned (minus fee)
