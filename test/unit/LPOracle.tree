@@ -1,0 +1,26 @@
+UnitLPOracle::fairLPPrice
+├── when feeds are configured and the fair price is within the allowed TWAP deviation
+│   ├── it returns the Alpha Homora fair LP price
+│   └── it is insensitive to reserve ratio manipulation when external prices stay fixed
+├── when a required feed is missing
+│   └── it reverts
+├── when total supply is zero
+│   └── it reverts
+├── when a feed answer is non-positive
+│   └── it reverts
+└── when the price guard rejects the price
+    └── it reverts with stale price
+
+
+UnitLPOracle::setFeeds
+├── when called by the owner
+│   └── it stores both feeds
+└── when called by a non-owner
+    └── it reverts
+
+
+UnitLPOracle::setPriceGuard
+├── when called by the owner
+│   └── it updates the price guard
+└── when called by a non-owner
+    └── it reverts
