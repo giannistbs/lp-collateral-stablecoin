@@ -1,0 +1,21 @@
+UnitLPUSD::constructor
+├── when deployed with zero vaultManager address
+│   └── it reverts
+└── when deployed with valid vaultManager address
+    ├── it sets VAULT_MANAGER
+    ├── it sets the token name
+    └── it sets the token symbol
+
+
+UnitLPUSD::mint
+├── when called by a non-vaultManager
+│   └── it reverts
+└── when called by the vaultManager
+    └── it mints tokens to the recipient
+
+
+UnitLPUSD::burn
+├── when called by a non-vaultManager
+│   └── it reverts
+└── when called by the vaultManager
+    └── it burns tokens from the account
