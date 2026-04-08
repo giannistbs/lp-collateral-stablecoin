@@ -1,0 +1,81 @@
+UnitVaultManager::constructor
+├── when any address param is zero
+│   └── it reverts
+└── when all params are valid
+    ├── it sets LPUSD
+    ├── it sets treasury
+    └── it grants roles to governance
+
+
+UnitVaultManager::depositAndMint
+├── when deposit amount is zero
+│   └── it reverts
+├── when no adapter is registered
+│   └── it reverts
+├── when collateral is not active
+│   └── it reverts
+├── when mint amount is zero
+│   └── it deposits collateral without minting
+└── when mint amount is non-zero
+    ├── when no oracle is set
+    │   └── it reverts
+    ├── when mint would exceed LTV
+    │   └── it reverts
+    ├── when mint would exceed debt ceiling
+    │   └── it reverts
+    └── when all checks pass
+        ├── it updates vault collateral and debt
+        ├── it mints net LPUSD to the user
+        ├── it mints fee to treasury
+        └── it emits events
+
+
+UnitVaultManager::repayAndWithdraw
+├── when both amounts are zero
+│   └── it reverts
+├── when repay amount exceeds vault debt
+│   └── it reverts
+├── when withdrawal would make health factor below 1.0
+│   └── it reverts
+└── when all checks pass
+    ├── it burns LPUSD from user
+    ├── it reduces vault debt
+    ├── it returns collateral to user
+    └── it emits events
+
+
+UnitVaultManager::healthFactor
+├── when vault has no debt
+│   └── it returns max uint256
+└── when vault has debt
+    └── it returns the correct scaled health factor
+
+
+UnitVaultManager::setCollateralAdapter
+├── when called by non-governance
+│   └── it reverts
+└── when called by governance
+    ├── it sets the adapter
+    └── it emits CollateralAdapterSet
+
+
+UnitVaultManager::setRiskParams
+├── when called by non-governance
+│   └── it reverts
+└── when called by governance
+    ├── it updates risk params
+    └── it emits RiskParamsSet
+
+
+UnitVaultManager::pause
+├── when called by non-guardian
+│   └── it reverts
+└── when called by guardian
+    └── it pauses the contract
+
+
+UnitVaultManager::unpause
+├── when called by non-guardian
+│   └── it reverts
+└── when called by guardian
+    └── it unpauses the contract
