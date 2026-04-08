@@ -1,0 +1,18 @@
+UnitPriceGuard::setTwapAdapter
+├── when called by owner
+│   └── it stores the adapter for the LP token
+└── when called by a non-owner
+    └── it reverts
+
+
+UnitPriceGuard::checkPrice
+├── when adapter is missing
+│   └── it reverts
+├── when TWAP is zero
+│   └── it reverts
+├── when deviation is below threshold
+│   └── it returns true
+├── when deviation equals threshold
+│   └── it reverts
+└── when deviation is above threshold
+    └── it reverts
