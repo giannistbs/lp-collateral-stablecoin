@@ -1,0 +1,30 @@
+UnitUniswapV2CollateralAdapter::constructor
+└── when deployed
+    ├── it sets LP_TOKEN
+    └── it sets VAULT_MANAGER
+
+
+UnitUniswapV2CollateralAdapter::deposit
+├── when called by a non-vaultManager
+│   └── it reverts
+└── when called by the vaultManager
+    ├── it transfers LP tokens from the user to the adapter
+    └── it emits Deposited
+
+
+UnitUniswapV2CollateralAdapter::withdraw
+├── when called by a non-vaultManager
+│   └── it reverts
+└── when called by the vaultManager
+    ├── it transfers LP tokens to the recipient
+    └── it emits Withdrawn
+
+
+UnitUniswapV2CollateralAdapter::adapterBalance
+└── when called
+    └── it returns the LP token balance held by the adapter
+
+
+UnitUniswapV2CollateralAdapter::pair
+└── when called
+    └── it returns the pair interface for LP_TOKEN
