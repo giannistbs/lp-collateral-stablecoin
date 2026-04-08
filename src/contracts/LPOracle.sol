@@ -16,15 +16,6 @@ import {IUniswapV2Pair} from 'interfaces/IUniswapV2Pair.sol';
 contract LPOracle is ILPOracle, Ownable {
   using Math for uint256;
 
-  /// @notice Reverts when the LP token does not have both price feeds configured.
-  error LPOracle_FeedNotSet();
-
-  /// @notice Reverts when the LP token total supply is zero.
-  error LPOracle_InvalidTotalSupply();
-
-  /// @notice Reverts when a Chainlink price feed returns a non-positive answer.
-  error LPOracle_InvalidFeedAnswer();
-
   /// @inheritdoc ILPOracle
   mapping(address _lpToken => address _feed) public feed0;
 
@@ -43,6 +34,15 @@ contract LPOracle is ILPOracle, Ownable {
   /// @notice Emitted when the price guard is updated.
   /// @param _priceGuard The new price guard address.
   event PriceGuardSet(address indexed _priceGuard);
+
+  /// @notice Reverts when the LP token does not have both price feeds configured.
+  error LPOracle_FeedNotSet();
+
+  /// @notice Reverts when the LP token total supply is zero.
+  error LPOracle_InvalidTotalSupply();
+
+  /// @notice Reverts when a Chainlink price feed returns a non-positive answer.
+  error LPOracle_InvalidFeedAnswer();
 
   /**
    * @notice Sets the initial owner and price guard.

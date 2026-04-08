@@ -60,13 +60,13 @@ contract VaultManager is AccessControl, Pausable, IVaultManager {
   mapping(address _user => mapping(address _lpToken => Vault)) internal _vaults;
 
   /// @inheritdoc IVaultManager
-  mapping(address _lpToken => ICollateralAdapter) public adapters;
+  mapping(address _lpToken => ICollateralAdapter _adapter) public adapters;
 
   /// @notice Risk parameters per collateral — read via getRiskParams()
-  mapping(address _lpToken => RiskParams) internal _riskParams;
+  mapping(address _lpToken => RiskParams _params) internal _riskParams;
 
   /// @inheritdoc IVaultManager
-  mapping(address _lpToken => uint256) public totalDebt;
+  mapping(address _lpToken => uint256 _debt) public totalDebt;
 
   /*///////////////////////////////////////////////////////////////
                             CONSTRUCTOR
@@ -196,31 +196,6 @@ contract VaultManager is AccessControl, Pausable, IVaultManager {
     _vault.lastUpdateTimestamp = uint40(block.timestamp);
   }
 
-  /// @inheritdoc IVaultManager
-  function getVault(address _user, address _lpToken) external view returns (Vault memory _vault) {
-    _vault = _vaults[_user][_lpToken];
-  }
-
-  /// @inheritdoc IVaultManager
-  function getRiskParams(address _lpToken) external view returns (RiskParams memory _params) {
-    _params = _riskParams[_lpToken];
-  }
-
-  /// @inheritdoc IVaultManager
-  function healthFactor(address _user, address _lpToken) external view returns (uint256 _hf) {
-    Vault memory _vault = _vaults[_user][_lpToken];
-
-    // No debt → infinitely healthy
-    if (_vault.debt == 0) return type(uint256).max;
-    if (address(oracle) == address(0)) revert VaultManager_NoOracle();
-
-    uint256 _price = oracle.fairLPPrice(_lpToken);
-    RiskParams memory _params = _riskParams[_lpToken];
-    uint256 _collateralValueUSD = (_vault.collateralAmount * _price) / _HF_SCALE;
-
-    _hf = (_collateralValueUSD * _params.liqThreshold * _HF_SCALE) / (_vault.debt * _BPS_DENOMINATOR);
-  }
-
   /*///////////////////////////////////////////////////////////////
                             GOVERNANCE
   //////////////////////////////////////////////////////////////*/
@@ -264,5 +239,30 @@ contract VaultManager is AccessControl, Pausable, IVaultManager {
   /// @inheritdoc IVaultManager
   function unpause() external onlyRole(GUARDIAN_ROLE) {
     _unpause();
+  }
+
+  /// @inheritdoc IVaultManager
+  function getVault(address _user, address _lpToken) external view returns (Vault memory _vault) {
+    _vault = _vaults[_user][_lpToken];
+  }
+
+  /// @inheritdoc IVaultManager
+  function getRiskParams(address _lpToken) external view returns (RiskParams memory _params) {
+    _params = _riskParams[_lpToken];
+  }
+
+  /// @inheritdoc IVaultManager
+  function healthFactor(address _user, address _lpToken) external view returns (uint256 _hf) {
+    Vault memory _vault = _vaults[_user][_lpToken];
+
+    // No debt → infinitely healthy
+    if (_vault.debt == 0) return type(uint256).max;
+    if (address(oracle) == address(0)) revert VaultManager_NoOracle();
+
+    uint256 _price = oracle.fairLPPrice(_lpToken);
+    RiskParams memory _params = _riskParams[_lpToken];
+    uint256 _collateralValueUSD = (_vault.collateralAmount * _price) / _HF_SCALE;
+
+    _hf = (_collateralValueUSD * _params.liqThreshold * _HF_SCALE) / (_vault.debt * _BPS_DENOMINATOR);
   }
 }

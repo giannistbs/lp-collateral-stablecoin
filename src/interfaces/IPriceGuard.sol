@@ -31,6 +31,13 @@ interface IPriceGuard {
   //////////////////////////////////////////////////////////////*/
 
   /**
+   * @notice Sets the TWAP adapter for an LP token.
+   * @param _lpToken LP token whose adapter should be updated.
+   * @param _adapter Adapter that returns the LP token TWAP price.
+   */
+  function setTwapAdapter(address _lpToken, address _adapter) external;
+
+  /**
    * @notice Returns whether the fair price is within the allowed deviation from the LP TWAP.
    * @param _lpToken LP token whose TWAP adapter should be queried.
    * @param _fairPrice Fair LP price expressed in 18 decimal USD.
@@ -44,13 +51,6 @@ interface IPriceGuard {
    * @param _fairPrice Fair LP price expressed in 18 decimal USD.
    */
   function checkPrice(address _lpToken, uint256 _fairPrice) external view;
-
-  /**
-   * @notice Sets the TWAP adapter for an LP token.
-   * @param _lpToken LP token whose adapter should be updated.
-   * @param _adapter Adapter that returns the LP token TWAP price.
-   */
-  function setTwapAdapter(address _lpToken, address _adapter) external;
 
   /**
    * @notice Returns the configured TWAP adapter for the LP token.

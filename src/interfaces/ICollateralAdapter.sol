@@ -38,22 +38,6 @@ interface ICollateralAdapter {
   error CollateralAdapter_OnlyVaultManager();
 
   /*///////////////////////////////////////////////////////////////
-                            VARIABLES
-  //////////////////////////////////////////////////////////////*/
-
-  /**
-   * @notice Returns the LP token this adapter is responsible for
-   * @return _lpToken Address of the LP token
-   */
-  function LP_TOKEN() external view returns (address _lpToken);
-
-  /**
-   * @notice Returns the VaultManager — the sole caller authorised to deposit/withdraw
-   * @return _vaultManager Address of the VaultManager
-   */
-  function VAULT_MANAGER() external view returns (address _vaultManager);
-
-  /*///////////////////////////////////////////////////////////////
                             LOGIC
   //////////////////////////////////////////////////////////////*/
 
@@ -72,6 +56,22 @@ interface ICollateralAdapter {
    * @param _amount Amount of LP tokens to withdraw
    */
   function withdraw(address _to, uint256 _amount) external;
+
+  /*///////////////////////////////////////////////////////////////
+                            VARIABLES
+  //////////////////////////////////////////////////////////////*/
+
+  /**
+   * @notice Returns the LP token this adapter is responsible for
+   * @return _lpToken Address of the LP token
+   */
+  function LP_TOKEN() external view returns (address _lpToken);
+
+  /**
+   * @notice Returns the VaultManager — the sole caller authorised to deposit/withdraw
+   * @return _vaultManager Address of the VaultManager
+   */
+  function VAULT_MANAGER() external view returns (address _vaultManager);
 
   /**
    * @notice Returns the total LP tokens currently held by this adapter

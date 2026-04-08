@@ -139,6 +139,81 @@ interface IVaultManager {
   error VaultManager_ZeroAddress();
 
   /*///////////////////////////////////////////////////////////////
+                            LOGIC
+  //////////////////////////////////////////////////////////////*/
+
+  /**
+   * @notice Deposits LP tokens as collateral and mints LPUSD in a single transaction
+   * @dev Pulls `_depositAmount` LP tokens from msg.sender (requires prior approval to the adapter),
+   *      prices the collateral via the oracle, validates the resulting LTV, then mints LPUSD.
+   *      A one-time minting fee (`mintFeeBps`) is deducted and sent to the treasury.
+   * @param _lpToken LP token to use as collateral
+   * @param _depositAmount Amount of LP tokens to deposit
+   * @param _mintAmount Gross LPUSD amount to mint (fee is deducted from this)
+   */
+  function depositAndMint(address _lpToken, uint256 _depositAmount, uint256 _mintAmount) external;
+
+  /**
+   * @notice Repays LPUSD debt and optionally withdraws LP collateral in a single transaction
+   * @dev Burns `_repayAmount` LPUSD from msg.sender. If `_withdrawAmount > 0`, checks that
+   *      the resulting health factor remains >= 1.0 before releasing collateral.
+   * @param _lpToken LP token collateral to interact with
+   * @param _repayAmount Amount of LPUSD to repay
+   * @param _withdrawAmount Amount of LP tokens to withdraw (0 to repay only)
+   */
+  function repayAndWithdraw(address _lpToken, uint256 _repayAmount, uint256 _withdrawAmount) external;
+
+  /*///////////////////////////////////////////////////////////////
+                            GOVERNANCE
+  //////////////////////////////////////////////////////////////*/
+
+  /**
+   * @notice Registers or updates the collateral adapter for an LP token
+   * @dev Only callable by GOVERNANCE_ROLE
+   * @param _lpToken LP token the adapter handles
+   * @param _adapter New adapter contract
+   */
+  function setCollateralAdapter(address _lpToken, ICollateralAdapter _adapter) external;
+
+  /**
+   * @notice Sets or updates risk parameters for a collateral type
+   * @dev Only callable by GOVERNANCE_ROLE
+   * @param _lpToken LP token to configure
+   * @param _params New risk parameters
+   */
+  function setRiskParams(address _lpToken, RiskParams calldata _params) external;
+
+  /**
+   * @notice Updates the LP price oracle
+   * @dev Only callable by GOVERNANCE_ROLE
+   * @param _oracle New oracle contract
+   */
+  function setOracle(ILPOracle _oracle) external;
+
+  /**
+   * @notice Updates the treasury address
+   * @dev Only callable by GOVERNANCE_ROLE
+   * @param _treasury New treasury address
+   */
+  function setTreasury(address _treasury) external;
+
+  /*///////////////////////////////////////////////////////////////
+                            GUARDIAN
+  //////////////////////////////////////////////////////////////*/
+
+  /**
+   * @notice Pauses all state-changing operations (deposit, mint, repay, withdraw)
+   * @dev Only callable by GUARDIAN_ROLE
+   */
+  function pause() external;
+
+  /**
+   * @notice Unpauses the contract
+   * @dev Only callable by GUARDIAN_ROLE
+   */
+  function unpause() external;
+
+  /*///////////////////////////////////////////////////////////////
                             ROLES
   //////////////////////////////////////////////////////////////*/
 
@@ -205,31 +280,6 @@ interface IVaultManager {
    */
   function totalDebt(address _lpToken) external view returns (uint256 _debt);
 
-  /*///////////////////////////////////////////////////////////////
-                            LOGIC
-  //////////////////////////////////////////////////////////////*/
-
-  /**
-   * @notice Deposits LP tokens as collateral and mints LPUSD in a single transaction
-   * @dev Pulls `_depositAmount` LP tokens from msg.sender (requires prior approval to the adapter),
-   *      prices the collateral via the oracle, validates the resulting LTV, then mints LPUSD.
-   *      A one-time minting fee (`mintFeeBps`) is deducted and sent to the treasury.
-   * @param _lpToken LP token to use as collateral
-   * @param _depositAmount Amount of LP tokens to deposit
-   * @param _mintAmount Gross LPUSD amount to mint (fee is deducted from this)
-   */
-  function depositAndMint(address _lpToken, uint256 _depositAmount, uint256 _mintAmount) external;
-
-  /**
-   * @notice Repays LPUSD debt and optionally withdraws LP collateral in a single transaction
-   * @dev Burns `_repayAmount` LPUSD from msg.sender. If `_withdrawAmount > 0`, checks that
-   *      the resulting health factor remains >= 1.0 before releasing collateral.
-   * @param _lpToken LP token collateral to interact with
-   * @param _repayAmount Amount of LPUSD to repay
-   * @param _withdrawAmount Amount of LP tokens to withdraw (0 to repay only)
-   */
-  function repayAndWithdraw(address _lpToken, uint256 _repayAmount, uint256 _withdrawAmount) external;
-
   /**
    * @notice Returns the current health factor for a vault
    * @dev HF = (collateralValue * liqThreshold) / (debt * BPS_DENOMINATOR)
@@ -239,54 +289,4 @@ interface IVaultManager {
    * @return _hf Health factor (18 decimals)
    */
   function healthFactor(address _user, address _lpToken) external view returns (uint256 _hf);
-
-  /*///////////////////////////////////////////////////////////////
-                            GOVERNANCE
-  //////////////////////////////////////////////////////////////*/
-
-  /**
-   * @notice Registers or updates the collateral adapter for an LP token
-   * @dev Only callable by GOVERNANCE_ROLE
-   * @param _lpToken LP token the adapter handles
-   * @param _adapter New adapter contract
-   */
-  function setCollateralAdapter(address _lpToken, ICollateralAdapter _adapter) external;
-
-  /**
-   * @notice Sets or updates risk parameters for a collateral type
-   * @dev Only callable by GOVERNANCE_ROLE
-   * @param _lpToken LP token to configure
-   * @param _params New risk parameters
-   */
-  function setRiskParams(address _lpToken, RiskParams calldata _params) external;
-
-  /**
-   * @notice Updates the LP price oracle
-   * @dev Only callable by GOVERNANCE_ROLE
-   * @param _oracle New oracle contract
-   */
-  function setOracle(ILPOracle _oracle) external;
-
-  /**
-   * @notice Updates the treasury address
-   * @dev Only callable by GOVERNANCE_ROLE
-   * @param _treasury New treasury address
-   */
-  function setTreasury(address _treasury) external;
-
-  /*///////////////////////////////////////////////////////////////
-                            GUARDIAN
-  //////////////////////////////////////////////////////////////*/
-
-  /**
-   * @notice Pauses all state-changing operations (deposit, mint, repay, withdraw)
-   * @dev Only callable by GUARDIAN_ROLE
-   */
-  function pause() external;
-
-  /**
-   * @notice Unpauses the contract
-   * @dev Only callable by GUARDIAN_ROLE
-   */
-  function unpause() external;
 }

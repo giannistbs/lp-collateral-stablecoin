@@ -25,7 +25,7 @@ contract UnitLPOracle is Test {
 
     uint256 _price = _lpOracle.fairLPPrice(address(_pair));
 
-    uint256 _expected = (2 * sqrt(2000e18 * 8000e18) * sqrt(1e18 * 2e18)) / 4000e18;
+    uint256 _expected = (2 * _sqrt(2000e18 * 8000e18) * _sqrt(1e18 * 2e18)) / 4000e18;
     assertEq(_price, _expected);
   }
 
@@ -180,7 +180,7 @@ contract UnitLPOracle is Test {
     assertApproxEqRel(_scaledPrice, _basePrice, 1e14);
   }
 
-  function sqrt(uint256 _x) internal pure returns (uint256 _result) {
+  function _sqrt(uint256 _x) internal pure returns (uint256 _result) {
     if (_x == 0) {
       return 0;
     }
@@ -196,6 +196,7 @@ contract UnitLPOracle is Test {
 
 contract MockPriceGuard is IPriceGuard {
   mapping(address _lpToken => address _adapter) public override twapAdapters;
+  // solhint-disable-next-line style-guide-casing
   uint256 public immutable override maxDeviation = 0.05e18;
   bool internal _shouldRevert;
 

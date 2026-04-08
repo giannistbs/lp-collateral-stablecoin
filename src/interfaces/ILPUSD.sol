@@ -24,16 +24,6 @@ interface ILPUSD {
   error LPUSD_ZeroAddress();
 
   /*///////////////////////////////////////////////////////////////
-                            VARIABLES
-  //////////////////////////////////////////////////////////////*/
-
-  /**
-   * @notice Returns the address of the VaultManager — the sole authorised minter/burner
-   * @return _vaultManager The VaultManager address
-   */
-  function VAULT_MANAGER() external view returns (address _vaultManager);
-
-  /*///////////////////////////////////////////////////////////////
                             LOGIC
   //////////////////////////////////////////////////////////////*/
 
@@ -53,4 +43,14 @@ interface ILPUSD {
    * @param _amount Amount to burn (18 decimals)
    */
   function burn(address _from, uint256 _amount) external;
+
+  /*///////////////////////////////////////////////////////////////
+                            VARIABLES
+  //////////////////////////////////////////////////////////////*/
+
+  /**
+   * @notice Returns the address of the VaultManager — the sole authorised minter/burner
+   * @return _vaultManager The VaultManager address
+   */
+  function VAULT_MANAGER() external view returns (address _vaultManager);
 }

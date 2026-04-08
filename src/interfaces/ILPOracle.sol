@@ -15,13 +15,6 @@ interface ILPOracle {
   error LPOracle_StalePrice();
 
   /**
-   * @notice Returns the fair USD price of an LP token.
-   * @param _lpToken The LP token address.
-   * @return _price The fair LP price in 18-decimal USD units.
-   */
-  function fairLPPrice(address _lpToken) external view returns (uint256 _price);
-
-  /**
    * @notice Sets Chainlink feeds for an LP token.
    * @param _lpToken The LP token whose feeds are being configured.
    * @param _feed0 Chainlink feed for token0.
@@ -34,6 +27,13 @@ interface ILPOracle {
    * @param _priceGuard The new price guard address.
    */
   function setPriceGuard(IPriceGuard _priceGuard) external;
+
+  /**
+   * @notice Returns the fair USD price of an LP token.
+   * @param _lpToken The LP token address.
+   * @return _price The fair LP price in 18-decimal USD units.
+   */
+  function fairLPPrice(address _lpToken) external view returns (uint256 _price);
 
   /**
    * @notice Returns the configured feed for token0 of the LP token.
