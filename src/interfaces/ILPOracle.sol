@@ -22,6 +22,20 @@ interface ILPOracle {
   function fairLPPrice(address _lpToken) external view returns (uint256 _price);
 
   /**
+   * @notice Sets Chainlink feeds for an LP token.
+   * @param _lpToken The LP token whose feeds are being configured.
+   * @param _feed0 Chainlink feed for token0.
+   * @param _feed1 Chainlink feed for token1.
+   */
+  function setFeeds(address _lpToken, address _feed0, address _feed1) external;
+
+  /**
+   * @notice Sets the price guard used for TWAP validation.
+   * @param _priceGuard The new price guard address.
+   */
+  function setPriceGuard(IPriceGuard _priceGuard) external;
+
+  /**
    * @notice Returns the configured feed for token0 of the LP token.
    * @param _lpToken The LP token address.
    * @return _feed The feed address.

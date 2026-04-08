@@ -10,7 +10,7 @@
 
 <dl>
   <dt>Sample contracts</dt>
-  <dd>Basic Greeter contract with an external interface.</dd>
+  <dd>Core LP-collateral stablecoin contracts with interface-first architecture.</dd>
 
   <dt>Foundry setup</dt>
   <dd>Foundry configuration with multiple custom profiles and remappings.</dd>

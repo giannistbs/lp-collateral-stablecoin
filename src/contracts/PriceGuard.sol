@@ -12,7 +12,7 @@ import {ITwapAdapter} from 'interfaces/ITwapAdapter.sol';
  * @notice Validates LP fair prices against configurable TWAP adapters.
  */
 contract PriceGuard is Ownable, IPriceGuard {
-  /// @notice The maximum allowed relative deviation, scaled by 1e18.
+  /// @inheritdoc IPriceGuard
   uint256 public immutable override maxDeviation;
 
   /// @inheritdoc IPriceGuard
@@ -27,11 +27,7 @@ contract PriceGuard is Ownable, IPriceGuard {
     maxDeviation = _maxDeviation;
   }
 
-  /**
-   * @notice Sets the TWAP adapter for an LP token.
-   * @param _lpToken The LP token to configure.
-   * @param _adapter The adapter returning the LP TWAP price.
-   */
+  /// @inheritdoc IPriceGuard
   function setTwapAdapter(address _lpToken, address _adapter) external onlyOwner {
     twapAdapters[_lpToken] = _adapter;
   }

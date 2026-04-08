@@ -3,11 +3,11 @@ pragma solidity 0.8.30;
 
 import {LPUSD} from 'contracts/LPUSD.sol';
 import {VaultManager} from 'contracts/VaultManager.sol';
+import {Test} from 'forge-std/Test.sol';
 import {ICollateralAdapter} from 'interfaces/ICollateralAdapter.sol';
 import {ILPOracle} from 'interfaces/ILPOracle.sol';
 import {ILPUSD} from 'interfaces/ILPUSD.sol';
 import {IVaultManager} from 'interfaces/IVaultManager.sol';
-import {Test} from 'forge-std/Test.sol';
 
 contract UnitVaultManager is Test {
   // ─── Actors ───────────────────────────────────
@@ -34,11 +34,7 @@ contract UnitVaultManager is Test {
   uint256 internal constant _BPS = 10_000;
 
   IVaultManager.RiskParams internal _params = IVaultManager.RiskParams({
-    maxLTV: _MAX_LTV,
-    liqThreshold: _LIQ_THRESHOLD,
-    mintFeeBps: _MINT_FEE_BPS,
-    debtCeiling: _DEBT_CEILING,
-    active: true
+    maxLTV: _MAX_LTV, liqThreshold: _LIQ_THRESHOLD, mintFeeBps: _MINT_FEE_BPS, debtCeiling: _DEBT_CEILING, active: true
   });
 
   function setUp() external {
@@ -68,9 +64,7 @@ contract UnitVaultManager is Test {
 
     // Setup adapter mock: deposit and withdraw succeed silently
     vm.etch(_adapter, new bytes(1));
-    vm.mockCall(
-      _adapter, abi.encodeWithSelector(ICollateralAdapter.deposit.selector, _user, _DEPOSIT), abi.encode()
-    );
+    vm.mockCall(_adapter, abi.encodeWithSelector(ICollateralAdapter.deposit.selector, _user, _DEPOSIT), abi.encode());
   }
 
   // ─────────────────────────────────────────────
@@ -241,9 +235,7 @@ contract UnitVaultManager is Test {
     // HF = ($200 * 75%) / $100 = 1.5. Withdrawing 60 LP leaves 40 LP = $80 * 75% = $60 / $100 = 0.6 < 1.0
     uint256 _withdrawTooMuch = 60e18;
     vm.mockCall(
-      _adapter,
-      abi.encodeWithSelector(ICollateralAdapter.withdraw.selector, _user, _withdrawTooMuch),
-      abi.encode()
+      _adapter, abi.encodeWithSelector(ICollateralAdapter.withdraw.selector, _user, _withdrawTooMuch), abi.encode()
     );
 
     vm.prank(_user);
@@ -258,7 +250,9 @@ contract UnitVaultManager is Test {
 
     // Give user enough LPUSD to repay (they received net = 99.5 LPUSD from minting)
     // Transfer some extra if needed — mock the burn
-    vm.mockCall(_adapter, abi.encodeWithSelector(ICollateralAdapter.withdraw.selector, _user, _withdrawAmount), abi.encode());
+    vm.mockCall(
+      _adapter, abi.encodeWithSelector(ICollateralAdapter.withdraw.selector, _user, _withdrawAmount), abi.encode()
+    );
 
     vm.expectEmit(true, true, true, true, address(_vault));
     emit IVaultManager.DebtRepaid(_user, _lpToken, _repayAmount);
@@ -332,11 +326,7 @@ contract UnitVaultManager is Test {
 
   function test_SetRiskParams_WhenCalledByGovernance() external {
     IVaultManager.RiskParams memory _newParams = IVaultManager.RiskParams({
-      maxLTV: 8000,
-      liqThreshold: 8500,
-      mintFeeBps: 30,
-      debtCeiling: 500_000e18,
-      active: true
+      maxLTV: 8000, liqThreshold: 8500, mintFeeBps: 30, debtCeiling: 500_000e18, active: true
     });
 
     vm.expectEmit(true, false, false, true, address(_vault));

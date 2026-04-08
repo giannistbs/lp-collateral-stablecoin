@@ -2,8 +2,8 @@
 pragma solidity 0.8.30;
 
 import {ICollateralAdapter} from 'interfaces/ICollateralAdapter.sol';
-import {ILPUSD} from 'interfaces/ILPUSD.sol';
 import {ILPOracle} from 'interfaces/ILPOracle.sol';
+import {ILPUSD} from 'interfaces/ILPUSD.sol';
 
 /**
  * @title IVaultManager

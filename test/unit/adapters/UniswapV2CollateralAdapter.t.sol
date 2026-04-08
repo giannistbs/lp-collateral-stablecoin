@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.30;
 
-import {UniswapV2CollateralAdapter} from 'contracts/adapters/UniswapV2CollateralAdapter.sol';
-import {ICollateralAdapter} from 'interfaces/ICollateralAdapter.sol';
 import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
+import {UniswapV2CollateralAdapter} from 'contracts/adapters/UniswapV2CollateralAdapter.sol';
 import {Test} from 'forge-std/Test.sol';
+import {ICollateralAdapter} from 'interfaces/ICollateralAdapter.sol';
 
 contract UnitUniswapV2CollateralAdapter is Test {
   address internal _vaultManager = makeAddr('vaultManager');
@@ -80,11 +80,7 @@ contract UnitUniswapV2CollateralAdapter is Test {
   }
 
   function test_Withdraw_WhenCalledByTheVaultManager() external {
-    vm.mockCall(
-      _lpToken,
-      abi.encodeWithSelector(IERC20.transfer.selector, _recipient, _AMOUNT),
-      abi.encode(true)
-    );
+    vm.mockCall(_lpToken, abi.encodeWithSelector(IERC20.transfer.selector, _recipient, _AMOUNT), abi.encode(true));
     vm.expectCall(_lpToken, abi.encodeWithSelector(IERC20.transfer.selector, _recipient, _AMOUNT));
 
     vm.expectEmit(true, true, true, true, address(_adapter));
@@ -101,9 +97,7 @@ contract UnitUniswapV2CollateralAdapter is Test {
 
   function test_AdapterBalance_WhenCalled() external {
     uint256 _balance = 123e18;
-    vm.mockCall(
-      _lpToken, abi.encodeWithSelector(IERC20.balanceOf.selector, address(_adapter)), abi.encode(_balance)
-    );
+    vm.mockCall(_lpToken, abi.encodeWithSelector(IERC20.balanceOf.selector, address(_adapter)), abi.encode(_balance));
 
     // it returns the LP token balance held by the adapter
     assertEq(_adapter.adapterBalance(), _balance);

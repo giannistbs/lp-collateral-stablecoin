@@ -2,8 +2,8 @@
 pragma solidity 0.8.30;
 
 import {LPUSD} from 'contracts/LPUSD.sol';
-import {ILPUSD} from 'interfaces/ILPUSD.sol';
 import {Test} from 'forge-std/Test.sol';
+import {ILPUSD} from 'interfaces/ILPUSD.sol';
 
 contract UnitLPUSD is Test {
   address internal _vaultManager = makeAddr('vaultManager');

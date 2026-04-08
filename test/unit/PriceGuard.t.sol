@@ -2,9 +2,9 @@
 pragma solidity 0.8.30;
 
 import {PriceGuard} from 'contracts/PriceGuard.sol';
+import {Test} from 'forge-std/Test.sol';
 import {IPriceGuard} from 'interfaces/IPriceGuard.sol';
 import {ITwapAdapter} from 'interfaces/ITwapAdapter.sol';
-import {Test} from 'forge-std/Test.sol';
 
 contract UnitPriceGuard is Test {
   address internal _governance = makeAddr('governance');

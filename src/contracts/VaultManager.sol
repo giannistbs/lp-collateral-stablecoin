@@ -96,11 +96,7 @@ contract VaultManager is AccessControl, Pausable, IVaultManager {
   //////////////////////////////////////////////////////////////*/
 
   /// @inheritdoc IVaultManager
-  function depositAndMint(
-    address _lpToken,
-    uint256 _depositAmount,
-    uint256 _mintAmount
-  ) external whenNotPaused {
+  function depositAndMint(address _lpToken, uint256 _depositAmount, uint256 _mintAmount) external whenNotPaused {
     if (_depositAmount == 0) revert VaultManager_ZeroAmount();
 
     ICollateralAdapter _adapter = adapters[_lpToken];
@@ -158,11 +154,7 @@ contract VaultManager is AccessControl, Pausable, IVaultManager {
   }
 
   /// @inheritdoc IVaultManager
-  function repayAndWithdraw(
-    address _lpToken,
-    uint256 _repayAmount,
-    uint256 _withdrawAmount
-  ) external whenNotPaused {
+  function repayAndWithdraw(address _lpToken, uint256 _repayAmount, uint256 _withdrawAmount) external whenNotPaused {
     if (_repayAmount == 0 && _withdrawAmount == 0) revert VaultManager_ZeroAmount();
 
     Vault storage _vault = _vaults[msg.sender][_lpToken];
@@ -190,8 +182,7 @@ contract VaultManager is AccessControl, Pausable, IVaultManager {
         uint256 _price = oracle.fairLPPrice(_lpToken);
         RiskParams memory _params = _riskParams[_lpToken];
         uint256 _newCollateralValueUSD = (_newCollateral * _price) / _HF_SCALE;
-        uint256 _hf =
-          (_newCollateralValueUSD * _params.liqThreshold * _HF_SCALE) / (_vault.debt * _BPS_DENOMINATOR);
+        uint256 _hf = (_newCollateralValueUSD * _params.liqThreshold * _HF_SCALE) / (_vault.debt * _BPS_DENOMINATOR);
 
         if (_hf < _HF_SCALE) revert VaultManager_UnsafeWithdrawal();
       }
