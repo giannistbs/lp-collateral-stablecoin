@@ -1,14 +1,9 @@
 {
-  "name": "solidity-foundry-boilerplate",
+  "name": "cdp-lp",
   "version": "1.0.0",
-  "description": "Production ready Solidity boilerplate with Foundry",
-  "homepage": "https://github.com/defi-wonderland/solidity-foundry-boilerplate#readme",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/defi-wonderland/solidity-foundry-boilerplate.git"
-  },
+  "description": "LP-collateral stablecoin protocol",
   "license": "MIT",
-  "author": "Wonderland",
+  "author": "Ioannis Tampakis",
   "scripts": {
     "build": "forge build",
     "build:optimized": "FOUNDRY_PROFILE=optimized forge build",
