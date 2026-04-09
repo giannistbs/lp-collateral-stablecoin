@@ -114,6 +114,30 @@ interface IVaultManager {
   event StabilityPoolSet(address indexed _stabilityPool);
 
   /**
+   * @notice Emitted when the liquidation manager address is updated
+   * @param _liquidationManager New liquidation manager address
+   */
+  event LiquidationManagerSet(address indexed _liquidationManager);
+
+  /**
+   * @notice Emitted when an external liquidator settles a vault
+   * @param _user Liquidated vault owner
+   * @param _lpToken LP collateral token
+   * @param _liquidator External liquidator address
+   * @param _debtRepaid LPUSD debt burned
+   * @param _collateralToLiquidator LP collateral sent to the liquidator
+   * @param _collateralReturned LP collateral returned to the vault owner
+   */
+  event ExternalLiquidation(
+    address indexed _user,
+    address indexed _lpToken,
+    address indexed _liquidator,
+    uint256 _debtRepaid,
+    uint256 _collateralToLiquidator,
+    uint256 _collateralReturned
+  );
+
+  /**
    * @notice Emitted when the Stability Pool settles part of a vault liquidation
    * @param _user Liquidated vault owner
    * @param _lpToken LP collateral token withdrawn
@@ -157,6 +181,9 @@ interface IVaultManager {
 
   /// @notice Thrown when a caller other than the configured Stability Pool calls a restricted function
   error VaultManager_OnlyStabilityPool();
+
+  /// @notice Thrown when a caller other than the configured liquidation manager calls a restricted function
+  error VaultManager_OnlyLiquidationManager();
 
   /// @notice Thrown when trying to withdraw more collateral than is stored in the vault
   error VaultManager_InsufficientCollateral();
@@ -243,6 +270,33 @@ interface IVaultManager {
    */
   function setStabilityPool(address _stabilityPool) external;
 
+  /**
+   * @notice Updates the liquidation manager address
+   * @dev Only callable by GOVERNANCE_ROLE
+   * @param _liquidationManager New liquidation manager address
+   */
+  function setLiquidationManager(address _liquidationManager) external;
+
+  /**
+   * @notice Settles an external liquidation: burns LPUSD from LiquidationManager and routes collateral
+   * @dev Only callable by the configured liquidation manager. Not pausable — liquidations must work while paused.
+   *      LiquidationManager must hold `_debtToRepay` LPUSD before calling (pulled from the external liquidator).
+   * @param _user Vault owner being liquidated
+   * @param _lpToken Collateral LP token of the vault
+   * @param _liquidator External liquidator who receives the liquidation bonus
+   * @param _debtToRepay LPUSD debt amount to burn from the LiquidationManager
+   * @param _collateralToLiquidator LP collateral amount sent to the liquidator (debt value + bonus)
+   * @param _collateralReturned LP collateral amount returned to the vault owner (excess above bonus)
+   */
+  function liquidateExternal(
+    address _user,
+    address _lpToken,
+    address _liquidator,
+    uint256 _debtToRepay,
+    uint256 _collateralToLiquidator,
+    uint256 _collateralReturned
+  ) external;
+
   /*///////////////////////////////////////////////////////////////
                             GUARDIAN
   //////////////////////////////////////////////////////////////*/
@@ -302,6 +356,12 @@ interface IVaultManager {
    * @return _stabilityPool The Stability Pool address
    */
   function stabilityPool() external view returns (address _stabilityPool);
+
+  /**
+   * @notice Returns the configured liquidation manager
+   * @return _liquidationManager The liquidation manager address
+   */
+  function liquidationManager() external view returns (address _liquidationManager);
 
   /**
    * @notice Returns the vault state for a user/collateral pair

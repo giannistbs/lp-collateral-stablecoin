@@ -85,6 +85,35 @@ UnitVaultManager::liquidateFromStabilityPool
     └── it emits StabilityPoolLiquidation
 
 
+UnitVaultManager::setLiquidationManager
+├── when called by non-governance
+│   └── it reverts
+└── when called by governance
+    ├── it sets the liquidation manager
+    └── it emits LiquidationManagerSet
+
+
+UnitVaultManager::liquidateExternal
+├── when called by a non-liquidationManager
+│   └── it reverts with VaultManager_OnlyLiquidationManager
+├── when debtToRepay is zero
+│   └── it reverts with VaultManager_ZeroAmount
+├── when no adapter is registered
+│   └── it reverts with VaultManager_NoAdapter
+├── when debt exceeds vault debt
+│   └── it reverts with VaultManager_InsufficientDebt
+├── when total collateral out exceeds vault collateral
+│   └── it reverts with VaultManager_InsufficientCollateral
+└── when all checks pass
+    ├── it burns LPUSD from the LiquidationManager
+    ├── it reduces vault debt and total debt
+    ├── it reduces vault collateral
+    ├── it sends collateralToLiquidator to the liquidator
+    ├── it sends collateralReturned to the vault owner
+    ├── it skips the return transfer when collateralReturned is zero
+    └── it emits ExternalLiquidation
+
+
 UnitVaultManager::pause
 ├── when called by non-guardian
 │   └── it reverts

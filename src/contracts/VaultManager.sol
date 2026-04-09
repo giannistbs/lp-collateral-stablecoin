@@ -59,6 +59,9 @@ contract VaultManager is AccessControl, Pausable, IVaultManager {
   /// @inheritdoc IVaultManager
   address public stabilityPool;
 
+  /// @inheritdoc IVaultManager
+  address public liquidationManager;
+
   /// @notice Per-user per-collateral vault state — read via getVault()
   mapping(address _user => mapping(address _lpToken => Vault)) internal _vaults;
 
@@ -200,6 +203,39 @@ contract VaultManager is AccessControl, Pausable, IVaultManager {
   }
 
   /// @inheritdoc IVaultManager
+  function liquidateExternal(
+    address _user,
+    address _lpToken,
+    address _liquidator,
+    uint256 _debtToRepay,
+    uint256 _collateralToLiquidator,
+    uint256 _collateralReturned
+  ) external {
+    if (msg.sender != liquidationManager) revert VaultManager_OnlyLiquidationManager();
+    if (_debtToRepay == 0) revert VaultManager_ZeroAmount();
+
+    ICollateralAdapter _adapter = adapters[_lpToken];
+    if (address(_adapter) == address(0)) revert VaultManager_NoAdapter();
+
+    Vault storage _vault = _vaults[_user][_lpToken];
+    if (_debtToRepay > _vault.debt) revert VaultManager_InsufficientDebt();
+    if (_collateralToLiquidator + _collateralReturned > _vault.collateralAmount) {
+      revert VaultManager_InsufficientCollateral();
+    }
+
+    _vault.debt -= _debtToRepay;
+    _vault.collateralAmount -= (_collateralToLiquidator + _collateralReturned);
+    _vault.lastUpdateTimestamp = uint40(block.timestamp);
+    totalDebt[_lpToken] -= _debtToRepay;
+
+    LPUSD.burn(msg.sender, _debtToRepay);
+    if (_collateralToLiquidator > 0) _adapter.withdraw(_liquidator, _collateralToLiquidator);
+    if (_collateralReturned > 0) _adapter.withdraw(_user, _collateralReturned);
+
+    emit ExternalLiquidation(_user, _lpToken, _liquidator, _debtToRepay, _collateralToLiquidator, _collateralReturned);
+  }
+
+  /// @inheritdoc IVaultManager
   function liquidateFromStabilityPool(
     address _user,
     address _lpToken,
@@ -265,6 +301,13 @@ contract VaultManager is AccessControl, Pausable, IVaultManager {
     if (_stabilityPool == address(0)) revert VaultManager_ZeroAddress();
     stabilityPool = _stabilityPool;
     emit StabilityPoolSet(_stabilityPool);
+  }
+
+  /// @inheritdoc IVaultManager
+  function setLiquidationManager(address _liquidationManager) external onlyRole(GOVERNANCE_ROLE) {
+    if (_liquidationManager == address(0)) revert VaultManager_ZeroAddress();
+    liquidationManager = _liquidationManager;
+    emit LiquidationManagerSet(_liquidationManager);
   }
 
   /*///////////////////////////////////////////////////////////////

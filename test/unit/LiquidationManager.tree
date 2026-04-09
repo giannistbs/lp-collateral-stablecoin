@@ -1,0 +1,40 @@
+UnitLiquidationManager::constructor
+├── when vaultManager is zero address
+│   └── it reverts
+├── when stabilityPool is zero address
+│   └── it reverts
+└── when all params are valid
+    ├── it sets vaultManager
+    └── it sets stabilityPool
+
+
+UnitLiquidationManager::isLiquidatable
+├── when vault has no debt
+│   └── it returns false
+├── when health factor equals exactly 1e18
+│   └── it returns false
+└── when health factor is below 1e18
+    └── it returns true
+
+
+UnitLiquidationManager::liquidate
+├── when vault is not liquidatable
+│   └── it reverts with LiquidationManager_VaultNotLiquidatable
+└── when vault is liquidatable
+    ├── when stabilityPool has enough deposits
+    │   ├── it calls stabilityPool.offset with full debt and collateral
+    │   └── it emits LiquidatedViaStabilityPool
+    └── when stabilityPool has insufficient deposits
+        ├── when liquidator has insufficient LPUSD allowance
+        │   └── it reverts with LiquidationManager_InsufficientAllowance
+        ├── when collateral value exceeds debt
+        │   ├── it pulls LPUSD from liquidator
+        │   ├── it sends debt-value LP plus 10% bonus to liquidator
+        │   ├── it returns excess collateral to vault owner
+        │   └── it emits LiquidatedExternally
+        ├── when collateral is capped
+        │   ├── it sends all collateral to liquidator
+        │   └── it returns zero to vault owner
+        └── when collateral value is less than debt
+            ├── it sends all collateral to liquidator
+            └── it emits LiquidatedExternally with zero collateralReturned

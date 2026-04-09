@@ -413,6 +413,141 @@ contract UnitVaultManager is Test {
   }
 
   // ─────────────────────────────────────────────
+  //  setLiquidationManager
+  // ─────────────────────────────────────────────
+
+  function test_SetLiquidationManager_WhenCalledByNon_governance(address _caller) external {
+    vm.assume(_caller != _governance);
+    vm.prank(_caller);
+    // it reverts
+    vm.expectRevert();
+    _vault.setLiquidationManager(makeAddr('liqManager'));
+  }
+
+  function test_SetLiquidationManager_WhenCalledByGovernance() external {
+    address _liqManager = makeAddr('liqManager');
+
+    vm.expectEmit(true, true, true, true, address(_vault));
+    emit IVaultManager.LiquidationManagerSet(_liqManager);
+
+    vm.prank(_governance);
+    _vault.setLiquidationManager(_liqManager);
+
+    // it sets the liquidation manager
+    assertEq(_vault.liquidationManager(), _liqManager);
+  }
+
+  // ─────────────────────────────────────────────
+  //  liquidateExternal
+  // ─────────────────────────────────────────────
+
+  address internal _liquidationManager = makeAddr('liquidationManager');
+  address internal _liquidator = makeAddr('liquidator');
+
+  modifier whenLiquidationManagerIsSet() {
+    vm.prank(_governance);
+    _vault.setLiquidationManager(_liquidationManager);
+    _;
+  }
+
+  function test_LiquidateExternal_WhenCalledByANon_liquidationManager() external whenVaultHasDebt {
+    vm.prank(_user);
+    // it reverts with VaultManager_OnlyLiquidationManager
+    vm.expectRevert(IVaultManager.VaultManager_OnlyLiquidationManager.selector);
+    _vault.liquidateExternal(_user, _lpToken, _liquidator, 10e18, 5e18, 0);
+  }
+
+  function test_LiquidateExternal_WhenDebtToRepayIsZero() external whenVaultHasDebt whenLiquidationManagerIsSet {
+    vm.prank(_liquidationManager);
+    // it reverts with VaultManager_ZeroAmount
+    vm.expectRevert(IVaultManager.VaultManager_ZeroAmount.selector);
+    _vault.liquidateExternal(_user, _lpToken, _liquidator, 0, 0, 0);
+  }
+
+  function test_LiquidateExternal_WhenNoAdapterIsRegistered() external whenLiquidationManagerIsSet {
+    address _unknownToken = makeAddr('unknownToken');
+    vm.prank(_liquidationManager);
+    // it reverts with VaultManager_NoAdapter
+    vm.expectRevert(IVaultManager.VaultManager_NoAdapter.selector);
+    _vault.liquidateExternal(_user, _unknownToken, _liquidator, 10e18, 5e18, 0);
+  }
+
+  function test_LiquidateExternal_WhenDebtExceedsVaultDebt() external whenVaultHasDebt whenLiquidationManagerIsSet {
+    vm.prank(_liquidationManager);
+    // it reverts with VaultManager_InsufficientDebt
+    vm.expectRevert(IVaultManager.VaultManager_InsufficientDebt.selector);
+    _vault.liquidateExternal(_user, _lpToken, _liquidator, 101e18, 50e18, 0);
+  }
+
+  function test_LiquidateExternal_WhenTotalCollateralOutExceedsVaultCollateral()
+    external
+    whenVaultHasDebt
+    whenLiquidationManagerIsSet
+  {
+    vm.prank(_liquidationManager);
+    // it reverts with VaultManager_InsufficientCollateral
+    vm.expectRevert(IVaultManager.VaultManager_InsufficientCollateral.selector);
+    _vault.liquidateExternal(_user, _lpToken, _liquidator, 10e18, 60e18, 60e18);
+  }
+
+  function test_LiquidateExternal_WhenAllChecksPass() external whenVaultHasDebt whenLiquidationManagerIsSet {
+    uint256 _debtToRepay = 40e18;
+    uint256 _collateralToLiquidator = 30e18;
+    uint256 _collateralReturned = 10e18;
+
+    // Give LiquidationManager the LPUSD it will burn (simulates it being pulled from external liquidator)
+    vm.prank(_user);
+    _lpusd.transfer(_liquidationManager, _debtToRepay);
+
+    vm.mockCall(
+      _adapter,
+      abi.encodeWithSelector(ICollateralAdapter.withdraw.selector, _liquidator, _collateralToLiquidator),
+      abi.encode()
+    );
+    vm.mockCall(
+      _adapter, abi.encodeWithSelector(ICollateralAdapter.withdraw.selector, _user, _collateralReturned), abi.encode()
+    );
+
+    vm.expectEmit(true, true, true, true, address(_vault));
+    emit IVaultManager.ExternalLiquidation(
+      _user, _lpToken, _liquidator, _debtToRepay, _collateralToLiquidator, _collateralReturned
+    );
+
+    vm.prank(_liquidationManager);
+    _vault.liquidateExternal(_user, _lpToken, _liquidator, _debtToRepay, _collateralToLiquidator, _collateralReturned);
+
+    IVaultManager.Vault memory _v = _vault.getVault(_user, _lpToken);
+    // it reduces vault debt and total debt
+    assertEq(_v.debt, 100e18 - _debtToRepay);
+    assertEq(_vault.totalDebt(_lpToken), 100e18 - _debtToRepay);
+    // it reduces vault collateral
+    assertEq(_v.collateralAmount, _DEPOSIT - _collateralToLiquidator - _collateralReturned);
+    // it burns LPUSD from the LiquidationManager
+    assertEq(_lpusd.balanceOf(_liquidationManager), 0);
+  }
+
+  function test_LiquidateExternal_WhenCollateralReturnedIsZero() external whenVaultHasDebt whenLiquidationManagerIsSet {
+    uint256 _debtToRepay = 40e18;
+    uint256 _collateralToLiquidator = 40e18;
+
+    vm.prank(_user);
+    _lpusd.transfer(_liquidationManager, _debtToRepay);
+
+    vm.mockCall(
+      _adapter,
+      abi.encodeWithSelector(ICollateralAdapter.withdraw.selector, _liquidator, _collateralToLiquidator),
+      abi.encode()
+    );
+
+    vm.prank(_liquidationManager);
+    _vault.liquidateExternal(_user, _lpToken, _liquidator, _debtToRepay, _collateralToLiquidator, 0);
+
+    // it skips the return transfer when collateralReturned is zero — no revert means success
+    IVaultManager.Vault memory _v = _vault.getVault(_user, _lpToken);
+    assertEq(_v.collateralAmount, _DEPOSIT - _collateralToLiquidator);
+  }
+
+  // ─────────────────────────────────────────────
   //  pause / unpause
   // ─────────────────────────────────────────────
 
