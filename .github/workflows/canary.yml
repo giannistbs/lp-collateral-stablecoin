@@ -15,7 +15,7 @@ jobs:
 
     env:
       # 2) Fill the project name to be used in NPM
-      NPM_PACKAGE_NAME: 'my-cool-project'
+      NPM_PACKAGE_NAME: 'cdp-lp'
       EXPORT_NAME: ${{ matrix.export_type == 'interfaces' && '-interfaces' || '' }}
 
     steps:
