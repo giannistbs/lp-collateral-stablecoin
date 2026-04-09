@@ -1,5 +1,7 @@
 # LP-Collateral Stablecoin Protocol
 
+[![CI](https://github.com/giannistbs/CDP-LP/actions/workflows/tests.yml/badge.svg)](https://github.com/giannistbs/CDP-LP/actions/workflows/tests.yml)
+
 This repository contains a Foundry-based Solidity implementation of a CDP protocol where users deposit
 Uniswap V2 LP tokens as collateral and mint `LPUSD`, a USD-pegged stablecoin.
 
