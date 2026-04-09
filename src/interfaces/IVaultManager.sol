@@ -120,6 +120,28 @@ interface IVaultManager {
   event LiquidationManagerSet(address indexed _liquidationManager);
 
   /**
+   * @notice Emitted when the redemption manager address is updated
+   * @param _redemptionManager New redemption manager address
+   */
+  event RedemptionManagerSet(address indexed _redemptionManager);
+
+  /**
+   * @notice Emitted when a vault is partially redeemed against
+   * @param _user Vault owner
+   * @param _lpToken LP collateral token
+   * @param _redeemer Address that initiated the redemption
+   * @param _debtRedeemed LPUSD debt burned from the vault
+   * @param _collateralWithdrawn LP collateral withdrawn to the redeemer
+   */
+  event VaultRedeemed(
+    address indexed _user,
+    address indexed _lpToken,
+    address indexed _redeemer,
+    uint256 _debtRedeemed,
+    uint256 _collateralWithdrawn
+  );
+
+  /**
    * @notice Emitted when an external liquidator settles a vault
    * @param _user Liquidated vault owner
    * @param _lpToken LP collateral token
@@ -184,6 +206,9 @@ interface IVaultManager {
 
   /// @notice Thrown when a caller other than the configured liquidation manager calls a restricted function
   error VaultManager_OnlyLiquidationManager();
+
+  /// @notice Thrown when a caller other than the configured redemption manager calls a restricted function
+  error VaultManager_OnlyRedemptionManager();
 
   /// @notice Thrown when trying to withdraw more collateral than is stored in the vault
   error VaultManager_InsufficientCollateral();
@@ -278,6 +303,13 @@ interface IVaultManager {
   function setLiquidationManager(address _liquidationManager) external;
 
   /**
+   * @notice Updates the redemption manager address
+   * @dev Only callable by GOVERNANCE_ROLE
+   * @param _redemptionManager New redemption manager address
+   */
+  function setRedemptionManager(address _redemptionManager) external;
+
+  /**
    * @notice Settles an external liquidation: burns LPUSD from LiquidationManager and routes collateral
    * @dev Only callable by the configured liquidation manager. Not pausable — liquidations must work while paused.
    *      LiquidationManager must hold `_debtToRepay` LPUSD before calling (pulled from the external liquidator).
@@ -295,6 +327,25 @@ interface IVaultManager {
     uint256 _debtToRepay,
     uint256 _collateralToLiquidator,
     uint256 _collateralReturned
+  ) external;
+
+  /**
+   * @notice Settles a redemption: burns LPUSD from the redeemer and releases LP collateral to them
+   * @dev Only callable by the configured redemption manager. Not pausable.
+   *      Burns `_debtToRedeem` LPUSD directly from `_redeemer`'s balance; no prior approval needed
+   *      because VaultManager is the authorised burner on the LPUSD token.
+   * @param _user Vault owner whose debt/collateral is partially redeemed
+   * @param _lpToken Collateral LP token of the vault
+   * @param _redeemer Address that receives the LP collateral
+   * @param _debtToRedeem LPUSD debt amount to burn from the redeemer
+   * @param _collateralAmount LP collateral amount to send to the redeemer (net of fee)
+   */
+  function redeemFromVault(
+    address _user,
+    address _lpToken,
+    address _redeemer,
+    uint256 _debtToRedeem,
+    uint256 _collateralAmount
   ) external;
 
   /*///////////////////////////////////////////////////////////////
@@ -362,6 +413,12 @@ interface IVaultManager {
    * @return _liquidationManager The liquidation manager address
    */
   function liquidationManager() external view returns (address _liquidationManager);
+
+  /**
+   * @notice Returns the configured redemption manager
+   * @return _redemptionManager The redemption manager address
+   */
+  function redemptionManager() external view returns (address _redemptionManager);
 
   /**
    * @notice Returns the vault state for a user/collateral pair

@@ -1,0 +1,49 @@
+UnitRedemptionManager::constructor
+├── when vaultManager is zero address
+│   └── it reverts with RedemptionManager_ZeroAddress
+└── when vaultManager is valid
+    ├── it sets vaultManager
+    ├── it sets lpusd from vaultManager
+    └── it sets lastDecayTimestamp to block.timestamp
+
+
+UnitRedemptionManager::redeem
+├── when lpusdAmount is zero
+│   └── it reverts with RedemptionManager_ZeroAmount
+├── when users array is empty
+│   └── it reverts with RedemptionManager_InsufficientVaults
+├── when vault has zero debt
+│   └── it reverts with RedemptionManager_VaultHasNoDebt
+├── when hints not sorted ascending
+│   └── it reverts with RedemptionManager_NotSortedByAscendingCR
+├── when hints exhausted before full amount
+│   └── it reverts with RedemptionManager_InsufficientVaults
+├── when single vault covers full amount
+│   ├── it calls redeemFromVault with correct debt and net collateral
+│   ├── it spikes baseRate proportionally
+│   ├── it updates lastDecayTimestamp to block.timestamp
+│   ├── it emits Redeemed with correct parameters
+│   └── it emits BaseRateUpdated with new baseRate
+├── when partial vault redemption
+│   └── it redeems available debt and leaves remainder in vault
+└── when multiple vaults needed ascending CR
+    ├── it redeems from lowest CR vault first
+    └── it accumulates collateral correctly across vaults
+
+
+UnitRedemptionManager::getEffectiveFeeRate
+├── when baseRate is zero and no time elapsed
+│   └── it returns MIN_FEE_BPS (50)
+├── when baseRate plus min fee is below max
+│   └── it returns baseRate plus MIN_FEE_BPS
+└── when baseRate plus min fee exceeds max
+    └── it returns MAX_FEE_BPS (1000)
+
+
+UnitRedemptionManager::baseRateDecay
+├── when no time elapsed
+│   └── it returns baseRate unchanged
+├── when 720 minutes elapsed
+│   └── it returns approximately half the original baseRate
+└── when more than max decay minutes elapsed
+    └── it returns zero

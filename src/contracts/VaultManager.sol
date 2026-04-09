@@ -62,6 +62,9 @@ contract VaultManager is AccessControl, Pausable, IVaultManager {
   /// @inheritdoc IVaultManager
   address public liquidationManager;
 
+  /// @inheritdoc IVaultManager
+  address public redemptionManager;
+
   /// @notice Per-user per-collateral vault state — read via getVault()
   mapping(address _user => mapping(address _lpToken => Vault)) internal _vaults;
 
@@ -308,6 +311,42 @@ contract VaultManager is AccessControl, Pausable, IVaultManager {
     if (_liquidationManager == address(0)) revert VaultManager_ZeroAddress();
     liquidationManager = _liquidationManager;
     emit LiquidationManagerSet(_liquidationManager);
+  }
+
+  /// @inheritdoc IVaultManager
+  function setRedemptionManager(address _redemptionManager) external onlyRole(GOVERNANCE_ROLE) {
+    if (_redemptionManager == address(0)) revert VaultManager_ZeroAddress();
+    redemptionManager = _redemptionManager;
+    emit RedemptionManagerSet(_redemptionManager);
+  }
+
+  /// @inheritdoc IVaultManager
+  function redeemFromVault(
+    address _user,
+    address _lpToken,
+    address _redeemer,
+    uint256 _debtToRedeem,
+    uint256 _collateralAmount
+  ) external {
+    if (msg.sender != redemptionManager) revert VaultManager_OnlyRedemptionManager();
+    if (_debtToRedeem == 0) revert VaultManager_ZeroAmount();
+
+    ICollateralAdapter _adapter = adapters[_lpToken];
+    if (address(_adapter) == address(0)) revert VaultManager_NoAdapter();
+
+    Vault storage _vault = _vaults[_user][_lpToken];
+    if (_debtToRedeem > _vault.debt) revert VaultManager_InsufficientDebt();
+    if (_collateralAmount > _vault.collateralAmount) revert VaultManager_InsufficientCollateral();
+
+    _vault.debt -= _debtToRedeem;
+    _vault.collateralAmount -= _collateralAmount;
+    _vault.lastUpdateTimestamp = uint40(block.timestamp);
+    totalDebt[_lpToken] -= _debtToRedeem;
+
+    LPUSD.burn(_redeemer, _debtToRedeem);
+    if (_collateralAmount > 0) _adapter.withdraw(_redeemer, _collateralAmount);
+
+    emit VaultRedeemed(_user, _lpToken, _redeemer, _debtToRedeem, _collateralAmount);
   }
 
   /*///////////////////////////////////////////////////////////////
