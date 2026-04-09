@@ -1,0 +1,37 @@
+UnitStabilityPool::setLiquidationManager
+└── when called by non-governance
+│   └── it reverts
+
+
+UnitStabilityPool::deposit
+├── when amount is zero
+│   └── it reverts
+└── when pool is empty
+    ├── it updates total deposits
+    ├── it mints shares one-to-one
+    └── it updates the user's deposit balance
+
+
+UnitStabilityPool::withdraw
+└── when amount exceeds current deposit balance after offset
+    ├── it reverts
+    └── it allows withdrawing the reduced balance
+
+
+UnitStabilityPool::offset
+├── when called by non-liquidationManager
+│   └── it reverts
+└── when called by liquidationManager
+    ├── it burns pool deposits
+    ├── it reduces depositor LPUSD balances pro-rata
+    ├── it accrues collateral rewards pro-rata
+    └── it receives LP collateral
+
+
+UnitStabilityPool::claim
+├── when user has accrued collateral rewards
+│   ├── it transfers LP collateral to the user
+│   └── it clears the user's claimable balance
+└── when a user deposits after rewards exist
+    ├── it does not give the new depositor past rewards
+    └── it preserves earlier depositors' accrued rewards

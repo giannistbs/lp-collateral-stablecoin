@@ -16,7 +16,7 @@ UnitVaultManager::depositAndMint
 │   └── it reverts
 ├── when mint amount is zero
 │   └── it deposits collateral without minting
-└── when mint amount is non-zero
+└── when mint amount is non zero
     ├── when no oracle is set
     │   └── it reverts
     ├── when mint would exceed LTV
@@ -65,6 +65,24 @@ UnitVaultManager::setRiskParams
 └── when called by governance
     ├── it updates risk params
     └── it emits RiskParamsSet
+
+
+UnitVaultManager::setStabilityPool
+├── when called by non-governance
+│   └── it reverts
+└── when called by governance
+    ├── it sets the stability pool
+    └── it emits StabilityPoolSet
+
+
+UnitVaultManager::liquidateFromStabilityPool
+├── when called by a non-stabilityPool
+│   └── it reverts
+└── when called by the stabilityPool
+    ├── it burns LPUSD from the Stability Pool
+    ├── it reduces vault debt and collateral
+    ├── it reduces total debt
+    └── it emits StabilityPoolLiquidation
 
 
 UnitVaultManager::pause

@@ -56,6 +56,9 @@ contract VaultManager is AccessControl, Pausable, IVaultManager {
   /// @inheritdoc IVaultManager
   address public treasury;
 
+  /// @inheritdoc IVaultManager
+  address public stabilityPool;
+
   /// @notice Per-user per-collateral vault state — read via getVault()
   mapping(address _user => mapping(address _lpToken => Vault)) internal _vaults;
 
@@ -196,6 +199,36 @@ contract VaultManager is AccessControl, Pausable, IVaultManager {
     _vault.lastUpdateTimestamp = uint40(block.timestamp);
   }
 
+  /// @inheritdoc IVaultManager
+  function liquidateFromStabilityPool(
+    address _user,
+    address _lpToken,
+    uint256 _debtToBurn,
+    uint256 _collateralToWithdraw
+  ) external {
+    if (msg.sender != stabilityPool) revert VaultManager_OnlyStabilityPool();
+    if (_debtToBurn == 0) revert VaultManager_ZeroAmount();
+
+    ICollateralAdapter _adapter = adapters[_lpToken];
+    if (address(_adapter) == address(0)) revert VaultManager_NoAdapter();
+
+    Vault storage _vault = _vaults[_user][_lpToken];
+    if (_debtToBurn > _vault.debt) revert VaultManager_InsufficientDebt();
+    if (_collateralToWithdraw > _vault.collateralAmount) revert VaultManager_InsufficientCollateral();
+
+    _vault.debt -= _debtToBurn;
+    _vault.collateralAmount -= _collateralToWithdraw;
+    _vault.lastUpdateTimestamp = uint40(block.timestamp);
+    totalDebt[_lpToken] -= _debtToBurn;
+
+    LPUSD.burn(msg.sender, _debtToBurn);
+    if (_collateralToWithdraw > 0) {
+      _adapter.withdraw(msg.sender, _collateralToWithdraw);
+    }
+
+    emit StabilityPoolLiquidation(_user, _lpToken, _debtToBurn, _collateralToWithdraw);
+  }
+
   /*///////////////////////////////////////////////////////////////
                             GOVERNANCE
   //////////////////////////////////////////////////////////////*/
@@ -225,6 +258,13 @@ contract VaultManager is AccessControl, Pausable, IVaultManager {
     if (_treasury == address(0)) revert VaultManager_ZeroAddress();
     treasury = _treasury;
     emit TreasurySet(_treasury);
+  }
+
+  /// @inheritdoc IVaultManager
+  function setStabilityPool(address _stabilityPool) external onlyRole(GOVERNANCE_ROLE) {
+    if (_stabilityPool == address(0)) revert VaultManager_ZeroAddress();
+    stabilityPool = _stabilityPool;
+    emit StabilityPoolSet(_stabilityPool);
   }
 
   /*///////////////////////////////////////////////////////////////

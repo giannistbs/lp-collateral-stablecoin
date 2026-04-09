@@ -14,6 +14,7 @@ contract UnitVaultManager is Test {
   address internal _governance = makeAddr('governance');
   address internal _treasury = makeAddr('treasury');
   address internal _user = makeAddr('user');
+  address internal _stabilityPool = makeAddr('stabilityPool');
 
   // ─── Protocol contracts ───────────────────────
   VaultManager internal _vault;
@@ -143,11 +144,11 @@ contract UnitVaultManager is Test {
     assertEq(_v.debt, 0);
   }
 
-  modifier whenMintAmountIsNon_zero() {
+  modifier whenMintAmountIsNonZero() {
     _;
   }
 
-  function test_DepositAndMint_WhenNoOracleIsSet() external whenMintAmountIsNon_zero {
+  function test_DepositAndMint_WhenNoOracleIsSet() external whenMintAmountIsNonZero {
     // Deploy a fresh vault without oracle
     uint256 _nonce = vm.getNonce(address(this));
     address _expectedVM = vm.computeCreateAddress(address(this), _nonce + 1);
@@ -165,7 +166,7 @@ contract UnitVaultManager is Test {
     _freshVault.depositAndMint(_lpToken, _DEPOSIT, 1e18);
   }
 
-  function test_DepositAndMint_WhenMintWouldExceedLTV() external whenMintAmountIsNon_zero {
+  function test_DepositAndMint_WhenMintWouldExceedLTV() external whenMintAmountIsNonZero {
     // Max mintable = 100e18 * $2 * 70% = 140e18
     uint256 _tooMuch = 141e18;
     vm.prank(_user);
@@ -174,7 +175,7 @@ contract UnitVaultManager is Test {
     _vault.depositAndMint(_lpToken, _DEPOSIT, _tooMuch);
   }
 
-  function test_DepositAndMint_WhenMintWouldExceedDebtCeiling() external whenMintAmountIsNon_zero {
+  function test_DepositAndMint_WhenMintWouldExceedDebtCeiling() external whenMintAmountIsNonZero {
     IVaultManager.RiskParams memory _tinyParams = _params;
     _tinyParams.debtCeiling = 1e18; // only 1 LPUSD allowed globally
     vm.prank(_governance);
@@ -186,7 +187,7 @@ contract UnitVaultManager is Test {
     _vault.depositAndMint(_lpToken, _DEPOSIT, 2e18);
   }
 
-  function test_DepositAndMint_WhenAllChecksPass() external whenMintAmountIsNon_zero {
+  function test_DepositAndMint_WhenAllChecksPass() external whenMintAmountIsNonZero {
     // Max mintable at 70% LTV with $2 price and 100 LP = $200 * 70% = 140 LPUSD
     uint256 _mintAmount = 100e18;
     uint256 _expectedFee = (_mintAmount * _MINT_FEE_BPS) / _BPS; // 0.5 LPUSD
@@ -343,6 +344,72 @@ contract UnitVaultManager is Test {
     IVaultManager.RiskParams memory _stored = _vault.getRiskParams(_lpToken);
     assertEq(_stored.maxLTV, 8000);
     assertEq(_stored.mintFeeBps, 30);
+  }
+
+  // ─────────────────────────────────────────────
+  //  setStabilityPool
+  // ─────────────────────────────────────────────
+
+  function test_SetStabilityPool_WhenCalledByNon_governance(address _caller) external {
+    vm.assume(_caller != _governance);
+    vm.prank(_caller);
+    // it reverts
+    vm.expectRevert();
+    _vault.setStabilityPool(_stabilityPool);
+  }
+
+  function test_SetStabilityPool_WhenCalledByGovernance() external {
+    vm.expectEmit(true, true, true, true, address(_vault));
+    emit IVaultManager.StabilityPoolSet(_stabilityPool);
+
+    vm.prank(_governance);
+    _vault.setStabilityPool(_stabilityPool);
+
+    // it sets the stability pool
+    assertEq(_vault.stabilityPool(), _stabilityPool);
+  }
+
+  // ─────────────────────────────────────────────
+  //  liquidateFromStabilityPool
+  // ─────────────────────────────────────────────
+
+  function test_LiquidateFromStabilityPool_WhenCalledByANon_stabilityPool() external whenVaultHasDebt {
+    vm.prank(_user);
+    // it reverts
+    vm.expectRevert(IVaultManager.VaultManager_OnlyStabilityPool.selector);
+    _vault.liquidateFromStabilityPool(_user, _lpToken, 10e18, 5e18);
+  }
+
+  function test_LiquidateFromStabilityPool_WhenCalledByTheStabilityPool() external whenVaultHasDebt {
+    uint256 _debtToBurn = 40e18;
+    uint256 _collateralToWithdraw = 20e18;
+
+    vm.mockCall(
+      _adapter,
+      abi.encodeWithSelector(ICollateralAdapter.withdraw.selector, _stabilityPool, _collateralToWithdraw),
+      abi.encode()
+    );
+
+    vm.prank(_governance);
+    _vault.setStabilityPool(_stabilityPool);
+
+    vm.prank(_user);
+    assertTrue(_lpusd.transfer(_stabilityPool, _debtToBurn));
+
+    vm.expectEmit(true, true, true, true, address(_vault));
+    emit IVaultManager.StabilityPoolLiquidation(_user, _lpToken, _debtToBurn, _collateralToWithdraw);
+
+    vm.prank(_stabilityPool);
+    _vault.liquidateFromStabilityPool(_user, _lpToken, _debtToBurn, _collateralToWithdraw);
+
+    IVaultManager.Vault memory _v = _vault.getVault(_user, _lpToken);
+    // it reduces vault debt and collateral
+    assertEq(_v.debt, 60e18);
+    assertEq(_v.collateralAmount, _DEPOSIT - _collateralToWithdraw);
+    // it reduces total debt
+    assertEq(_vault.totalDebt(_lpToken), 60e18);
+    // it burns LPUSD from the Stability Pool
+    assertEq(_lpusd.balanceOf(_stabilityPool), 0);
   }
 
   // ─────────────────────────────────────────────

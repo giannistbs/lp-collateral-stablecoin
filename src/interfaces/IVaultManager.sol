@@ -107,6 +107,23 @@ interface IVaultManager {
    */
   event TreasurySet(address indexed _treasury);
 
+  /**
+   * @notice Emitted when the Stability Pool address is updated
+   * @param _stabilityPool New Stability Pool address
+   */
+  event StabilityPoolSet(address indexed _stabilityPool);
+
+  /**
+   * @notice Emitted when the Stability Pool settles part of a vault liquidation
+   * @param _user Liquidated vault owner
+   * @param _lpToken LP collateral token withdrawn
+   * @param _debtToBurn LPUSD debt burned from the Stability Pool
+   * @param _collateralToWithdraw LP collateral transferred to the Stability Pool
+   */
+  event StabilityPoolLiquidation(
+    address indexed _user, address indexed _lpToken, uint256 _debtToBurn, uint256 _collateralToWithdraw
+  );
+
   /*///////////////////////////////////////////////////////////////
                             ERRORS
   //////////////////////////////////////////////////////////////*/
@@ -138,6 +155,12 @@ interface IVaultManager {
   /// @notice Thrown when a zero address is passed where one is not allowed
   error VaultManager_ZeroAddress();
 
+  /// @notice Thrown when a caller other than the configured Stability Pool calls a restricted function
+  error VaultManager_OnlyStabilityPool();
+
+  /// @notice Thrown when trying to withdraw more collateral than is stored in the vault
+  error VaultManager_InsufficientCollateral();
+
   /*///////////////////////////////////////////////////////////////
                             LOGIC
   //////////////////////////////////////////////////////////////*/
@@ -162,6 +185,22 @@ interface IVaultManager {
    * @param _withdrawAmount Amount of LP tokens to withdraw (0 to repay only)
    */
   function repayAndWithdraw(address _lpToken, uint256 _repayAmount, uint256 _withdrawAmount) external;
+
+  /**
+   * @notice Burns Stability Pool LPUSD against a vault and transfers LP collateral to the pool
+   * @dev Only callable by the configured Stability Pool. This is a narrow settlement hook for
+   *      liquidation flows; health checks and liquidation selection are expected to happen elsewhere.
+   * @param _user Vault owner whose debt/collateral should be reduced
+   * @param _lpToken Collateral LP token of the vault
+   * @param _debtToBurn LPUSD debt amount to burn from the Stability Pool
+   * @param _collateralToWithdraw LP collateral amount to withdraw to the Stability Pool
+   */
+  function liquidateFromStabilityPool(
+    address _user,
+    address _lpToken,
+    uint256 _debtToBurn,
+    uint256 _collateralToWithdraw
+  ) external;
 
   /*///////////////////////////////////////////////////////////////
                             GOVERNANCE
@@ -196,6 +235,13 @@ interface IVaultManager {
    * @param _treasury New treasury address
    */
   function setTreasury(address _treasury) external;
+
+  /**
+   * @notice Updates the Stability Pool address
+   * @dev Only callable by GOVERNANCE_ROLE
+   * @param _stabilityPool New Stability Pool address
+   */
+  function setStabilityPool(address _stabilityPool) external;
 
   /*///////////////////////////////////////////////////////////////
                             GUARDIAN
@@ -250,6 +296,12 @@ interface IVaultManager {
    * @return _treasury The treasury address
    */
   function treasury() external view returns (address _treasury);
+
+  /**
+   * @notice Returns the configured Stability Pool
+   * @return _stabilityPool The Stability Pool address
+   */
+  function stabilityPool() external view returns (address _stabilityPool);
 
   /**
    * @notice Returns the vault state for a user/collateral pair
