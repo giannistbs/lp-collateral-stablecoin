@@ -41,7 +41,7 @@ contract UnitUniswapV2CollateralAdapter is Test {
   //  deposit
   // ─────────────────────────────────────────────
 
-  function test_Deposit_WhenCalledByANonVaultManager(address _caller) external {
+  function test_Deposit_WhenCalledByANon_vaultManager(address _caller) external {
     vm.assume(_caller != _vaultManager);
     vm.prank(_caller);
 
@@ -70,7 +70,7 @@ contract UnitUniswapV2CollateralAdapter is Test {
   //  withdraw
   // ─────────────────────────────────────────────
 
-  function test_Withdraw_WhenCalledByANonVaultManager(address _caller) external {
+  function test_Withdraw_WhenCalledByANon_vaultManager(address _caller) external {
     vm.assume(_caller != _vaultManager);
     vm.prank(_caller);
 

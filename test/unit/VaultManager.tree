@@ -35,7 +35,7 @@ UnitVaultManager::repayAndWithdraw
 │   └── it reverts
 ├── when repay amount exceeds vault debt
 │   └── it reverts
-├── when withdrawal would make health factor below 1.0
+├── when withdrawal would make health factor below one
 │   └── it reverts
 └── when all checks pass
     ├── it burns LPUSD from user

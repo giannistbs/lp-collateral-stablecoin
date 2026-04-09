@@ -143,7 +143,11 @@ contract UnitVaultManager is Test {
     assertEq(_v.debt, 0);
   }
 
-  function test_DepositAndMint_WhenNoOracleIsSet() external {
+  modifier whenMintAmountIsNon_zero() {
+    _;
+  }
+
+  function test_DepositAndMint_WhenNoOracleIsSet() external whenMintAmountIsNon_zero {
     // Deploy a fresh vault without oracle
     uint256 _nonce = vm.getNonce(address(this));
     address _expectedVM = vm.computeCreateAddress(address(this), _nonce + 1);
@@ -161,7 +165,7 @@ contract UnitVaultManager is Test {
     _freshVault.depositAndMint(_lpToken, _DEPOSIT, 1e18);
   }
 
-  function test_DepositAndMint_WhenMintWouldExceedLtv() external {
+  function test_DepositAndMint_WhenMintWouldExceedLTV() external whenMintAmountIsNon_zero {
     // Max mintable = 100e18 * $2 * 70% = 140e18
     uint256 _tooMuch = 141e18;
     vm.prank(_user);
@@ -170,7 +174,7 @@ contract UnitVaultManager is Test {
     _vault.depositAndMint(_lpToken, _DEPOSIT, _tooMuch);
   }
 
-  function test_DepositAndMint_WhenMintWouldExceedDebtCeiling() external {
+  function test_DepositAndMint_WhenMintWouldExceedDebtCeiling() external whenMintAmountIsNon_zero {
     IVaultManager.RiskParams memory _tinyParams = _params;
     _tinyParams.debtCeiling = 1e18; // only 1 LPUSD allowed globally
     vm.prank(_governance);
@@ -182,7 +186,7 @@ contract UnitVaultManager is Test {
     _vault.depositAndMint(_lpToken, _DEPOSIT, 2e18);
   }
 
-  function test_DepositAndMint_WhenAllChecksPass() external {
+  function test_DepositAndMint_WhenAllChecksPass() external whenMintAmountIsNon_zero {
     // Max mintable at 70% LTV with $2 price and 100 LP = $200 * 70% = 140 LPUSD
     uint256 _mintAmount = 100e18;
     uint256 _expectedFee = (_mintAmount * _MINT_FEE_BPS) / _BPS; // 0.5 LPUSD
@@ -291,7 +295,7 @@ contract UnitVaultManager is Test {
   //  setCollateralAdapter
   // ─────────────────────────────────────────────
 
-  function test_SetCollateralAdapter_WhenCalledByNonGovernance(address _caller) external {
+  function test_SetCollateralAdapter_WhenCalledByNon_governance(address _caller) external {
     vm.assume(_caller != _governance);
     vm.prank(_caller);
     // it reverts
@@ -316,7 +320,7 @@ contract UnitVaultManager is Test {
   //  setRiskParams
   // ─────────────────────────────────────────────
 
-  function test_SetRiskParams_WhenCalledByNonGovernance(address _caller) external {
+  function test_SetRiskParams_WhenCalledByNon_governance(address _caller) external {
     vm.assume(_caller != _governance);
     vm.prank(_caller);
     // it reverts
@@ -345,7 +349,7 @@ contract UnitVaultManager is Test {
   //  pause / unpause
   // ─────────────────────────────────────────────
 
-  function test_Pause_WhenCalledByNonGuardian(address _caller) external {
+  function test_Pause_WhenCalledByNon_guardian(address _caller) external {
     vm.assume(_caller != _governance);
     vm.prank(_caller);
     // it reverts
@@ -360,7 +364,7 @@ contract UnitVaultManager is Test {
     assertTrue(_vault.paused());
   }
 
-  function test_Unpause_WhenCalledByNonGuardian(address _caller) external {
+  function test_Unpause_WhenCalledByNon_guardian(address _caller) external {
     vm.prank(_governance);
     _vault.pause();
 

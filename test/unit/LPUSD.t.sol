@@ -41,7 +41,7 @@ contract UnitLPUSD is Test {
   //  mint
   // ─────────────────────────────────────────────
 
-  function test_Mint_WhenCalledByANonVaultManager(address _caller) external {
+  function test_Mint_WhenCalledByANon_vaultManager(address _caller) external {
     vm.assume(_caller != _vaultManager);
     vm.prank(_caller);
 
@@ -64,7 +64,7 @@ contract UnitLPUSD is Test {
   //  burn
   // ─────────────────────────────────────────────
 
-  function test_Burn_WhenCalledByANonVaultManager(address _caller) external {
+  function test_Burn_WhenCalledByANon_vaultManager(address _caller) external {
     vm.assume(_caller != _vaultManager);
 
     // Mint some tokens first
