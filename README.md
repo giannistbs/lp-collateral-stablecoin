@@ -1,176 +1,77 @@
-<img src="https://raw.githubusercontent.com/defi-wonderland/brand/v1.0.0/external/solidity-foundry-boilerplate-banner.png" alt="wonderland banner" align="center" />
-<br />
+# LP-Collateral Stablecoin Protocol
 
-<div align="center"><strong>Start your next Solidity project with Foundry in seconds</strong></div>
-<div align="center">A highly scalable foundation focused on DX and best practices</div>
+This repository contains a Foundry-based Solidity implementation of a CDP protocol where users deposit
+Uniswap V2 LP tokens as collateral and mint `LPUSD`, a USD-pegged stablecoin.
 
-<br />
+The system is built around LP-specific risk management, including:
 
-## Features
+- fair LP pricing using oracle-based valuation instead of pool spot price
+- per-collateral risk parameters such as max LTV, liquidation threshold, mint fee, and debt ceiling
+- a Stability Pool that absorbs liquidations using deposited `LPUSD`
+- liquidation and redemption mechanisms to support solvency and peg stability
 
-<dl>
-  <dt>Sample contracts</dt>
-  <dd>Core LP-collateral stablecoin contracts with interface-first architecture.</dd>
+## Core contracts
 
-  <dt>Foundry setup</dt>
-  <dd>Foundry configuration with multiple custom profiles and remappings.</dd>
+- `LPUSD`: ERC-20 stablecoin minted and burned by the vault system
+- `VaultManager`: core CDP engine for deposits, minting, repayment, withdrawals, and vault accounting
+- `CollateralAdapter`: custody layer for supported LP tokens
+- `LPOracle`: fair-price oracle for Uniswap V2 LP tokens
+- `PriceGuard`: TWAP deviation circuit breaker
+- `StabilityPool`: `LPUSD` pool used to absorb liquidations
+- `LiquidationManager`: liquidation routing and settlement
+- `RedemptionManager`: redemptions of `LPUSD` into collateral
 
-  <dt>Deployment scripts</dt>
-  <dd>Sample scripts to deploy contracts on both mainnet and testnet.</dd>
+## Repository layout
 
-  <dt>Sample Integration, Unit, Property-based fuzzed and symbolic tests</dt>
-  <dd>Example tests showcasing mocking, assertions and configuration for mainnet forking. As well it includes everything needed in order to check code coverage.</dd>
-  <dd>Unit tests are built based on the <a href="https://twitter.com/PaulRBerg/status/1682346315806539776">Branched-Tree Technique</a>, using <a href="https://github.com/alexfertel/bulloak">Bulloak</a>.
+- `src/contracts`: contract implementations
+- `src/interfaces`: Solidity interfaces and NatSpec
+- `test/unit`: unit tests and Bulloak trees
+- `script`: deployment and scripting entrypoints
 
-  <dt>Linter</dt>
-  <dd>Simple and fast solidity linting thanks to forge fmt.</dd>
-  <dd>Find missing natspec automatically.</dd>
+## Tech stack
 
-  <dt>Github workflows CI</dt>
-  <dd>Run all tests and see the coverage as you push your changes.</dd>
-  <dd>Export your Solidity interfaces and contracts as packages, and publish them to NPM.</dd>
-</dl>
+- Solidity `0.8.30`
+- Foundry
+- OpenZeppelin Contracts
+- `pnpm` for JavaScript tooling
+- Solhint, Lintspec, Bulloak, Commitlint, Husky
 
-## Setup
+## Getting started
 
-1. Install Foundry by following the instructions from [their repository](https://github.com/foundry-rs/foundry#installation).
-2. Copy the `.env.example` file to `.env` and fill in the variables.
-3. Install rust dependencies with [cargo](https://doc.rust-lang.org/cargo/getting-started/installation.html):
-   1. `cargo install lintspec`
-   2. `cargo install bulloak`
-4. Install the dependencies by running: `pnpm install`. In case there is an error with the commands, run `foundryup` and try them again.
+1. Install [Foundry](https://github.com/foundry-rs/foundry#installation).
+2. Install project dependencies:
 
-## Build
+```bash
+pnpm install
+```
 
-The default way to build the code is suboptimal but fast, you can run it via:
+3. Copy `.env.example` to `.env` and fill in the required variables if you plan to deploy or run fork-based
+   flows.
+
+## Common commands
 
 ```bash
 pnpm build
-```
-
-In order to build a more optimized code ([via IR](https://docs.soliditylang.org/en/v0.8.15/ir-breaking-changes.html#solidity-ir-based-codegen-changes)), run:
-
-```bash
-pnpm build:optimized
-```
-
-## Running tests
-
-Unit tests should be isolated from any externalities, while Integration usually run in a fork of the blockchain. In this boilerplate you will find example of both.
-
-In order to run both unit and integration tests, run:
-
-```bash
 pnpm test
-```
-
-In order to just run unit tests, run:
-
-```bash
 pnpm test:unit
-```
-
-In order to run unit tests and run way more fuzzing than usual (5x), run:
-
-```bash
-pnpm test:unit:deep
-```
-
-In order to just run integration tests, run:
-
-```bash
 pnpm test:integration
-```
-
-In order to check your current code coverage, run:
-
-```bash
+pnpm lint:check
+pnpm lint:sol
 pnpm coverage
 ```
 
-In order to create a new `.t.sol` file from a `.tree` bulloak file, run:
+## Deployment
 
-```bash
-pnpm test:bulloak:scaffold
-```
-
-In order to fix or add missing tests to a `.t.sol` file after changing a `.tree` bulloak file, run:
-
-```bash
-pnpm test:bulloak:fix
-```
-
-<br>
-
-## Deploy & verify
-
-### Setup
-
-Configure the `.env` variables and source them:
-
-```bash
-source .env
-```
-
-Import your private keys into Foundry's encrypted keystore:
-
-```bash
-cast wallet import $MAINNET_DEPLOYER_NAME --interactive
-```
-
-```bash
-cast wallet import $SEPOLIA_DEPLOYER_NAME --interactive
-```
-
-### Sepolia
+Deployment scripts are available for Sepolia and mainnet:
 
 ```bash
 pnpm deploy:sepolia
-```
-
-### Mainnet
-
-```bash
 pnpm deploy:mainnet
 ```
 
-The deployments are stored in ./broadcast
+These commands expect the relevant RPC, Etherscan, and deployer environment variables to be configured in
+`.env`.
 
-See the [Foundry Book for available options](https://book.getfoundry.sh/reference/forge/forge-create.html).
+## License
 
-## Export And Publish
-
-Export TypeScript interfaces from Solidity contracts and interfaces providing compatibility with TypeChain. Publish the exported packages to NPM.
-
-To enable this feature, make sure you've set the `NPM_TOKEN` on your org's secrets. Then set the job's conditional to `true`:
-
-```yaml
-jobs:
-  export:
-    name: Generate Interfaces And Contracts
-    # Remove the following line if you wish to export your Solidity contracts and interfaces and publish them to NPM
-    if: true
-    ...
-```
-
-Also, remember to update the `package_name` param to your package name:
-
-```yaml
-- name: Export Solidity - ${{ matrix.export_type }}
-  uses: defi-wonderland/solidity-exporter-action@1dbf5371c260add4a354e7a8d3467e5d3b9580b8
-  with:
-    # Update package_name with your package name
-    package_name: "my-cool-project"
-    ...
-
-
-- name: Publish to NPM - ${{ matrix.export_type }}
-  # Update `my-cool-project` with your package name
-  run: cd export/my-cool-project-${{ matrix.export_type }} && npm publish --access public
-  ...
-```
-
-You can take a look at our [solidity-exporter-action](https://github.com/defi-wonderland/solidity-exporter-action) repository for more information and usage examples.
-
-## Licensing
-The primary license for the boilerplate is MIT, see [`LICENSE`](https://github.com/defi-wonderland/solidity-foundry-boilerplate/blob/main/LICENSE)
+MIT. See `LICENSE`.
