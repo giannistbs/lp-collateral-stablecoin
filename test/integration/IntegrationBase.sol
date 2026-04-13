@@ -9,7 +9,7 @@ contract IntegrationBase is Test {
   address internal _user = makeAddr('user');
   address internal _owner = makeAddr('owner');
 
-  function setUp() public {
+  function setUp() public virtual {
     vm.createSelectFork(vm.rpcUrl('mainnet'), _FORK_BLOCK);
   }
 }
