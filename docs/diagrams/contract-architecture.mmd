@@ -1,72 +1,63 @@
 graph TB
-    subgraph "User Facing"
-        USER[User / Borrower]
-        LIQUIDATOR[Liquidator]
-        REDEEMER[LPUSD Holder / Redeemer]
-        SP_DEPOSITOR[Stability Provider]
+    subgraph users [UserActors]
+        USER((User / Borrower))
+        LIQUIDATOR((Liquidator))
+        REDEEMER((LPUSD Holder / Redeemer))
+        SP_DEPOSITOR((Stability Provider))
     end
 
-    subgraph "Core Protocol"
+    subgraph core [CoreProtocol]
         VM[VaultManager\nCDP Engine]
         LPUSD_TOKEN[LPUSD\nERC-20 Stablecoin]
         SP[StabilityPool\nLPUSD Buffer]
-        RM[RedemptionManager\nPeg Defense]
         LM[LiquidationManager\nHealth Checker]
+        RM[RedemptionManager\nPeg Defense]
     end
 
-    subgraph "Collateral Layer"
-        CA_A[CollateralAdapter\nUSDC-USDT LP]
-        CA_B[CollateralAdapter\nWETH-USDC LP]
-        CA_C[CollateralAdapter\nWETH-WBTC LP]
-        VAULT_STORE[(Vault Storage\nper LP token)]
+    subgraph collateral [CollateralLayer]
+        CA["CollateralAdapter(s)\nWhitelisted LP Markets"]
+        VAULT_STORE[("Vault Storage\nper user + LP token")]
     end
 
-    subgraph "Oracle Layer"
+    subgraph oracle [OracleLayer]
         LP_ORACLE[LPOracle\nFair Price Engine]
+        PRICE_GUARD[PriceGuard\nDeviation Check]
+        TWAP_ADAPTER[TWAP Adapter]
         CHAINLINK[Chainlink Feeds\ntoken0 / token1]
-        TWAP[Uniswap TWAP\n30-min window]
-        PRICE_GUARD[PriceGuard\nDeviation Circuit Breaker]
     end
 
-    subgraph "Governance"
+    subgraph gov [Governance]
         TREASURY[TreasuryMultisig\nRisk Parameters]
-        GOV[Governance\nTimelock]
+        GOV[Governance Timelock]
     end
 
-    USER -->|deposit LP, mint LPUSD| VM
-    USER -->|repay LPUSD, withdraw LP| VM
-    LIQUIDATOR -->|repay debt, claim collateral| LM
-    REDEEMER -->|redeem LPUSD for LP collateral| RM
-    SP_DEPOSITOR -->|deposit LPUSD| SP
+    USER -->|deposit LP / mint LPUSD| VM
+    USER -->|repay LPUSD / withdraw LP| VM
+    SP_DEPOSITOR -->|deposit / withdraw LPUSD| SP
+    SP_DEPOSITOR -->|claim LP rewards| SP
+    LIQUIDATOR -->|liquidate unhealthy vault| LM
+    REDEEMER -->|redeem LPUSD| RM
 
-    VM -->|mint / burn| LPUSD_TOKEN
-    VM -->|routes by collateral type| CA_A
-    VM -->|routes by collateral type| CA_B
-    VM -->|routes by collateral type| CA_C
+    LM -->|checks health factor| VM
+    LM -->|SP path: offset debt| SP
+    LM -->|fallback: settle external liquidation| VM
+    RM -->|"redeemFromVault (sorted users input)"| VM
+
+    SP -->|liquidateFromStabilityPool| VM
+    VM -->|mint / burn authority| LPUSD_TOKEN
+    SP -->|transfers LPUSD in/out| LPUSD_TOKEN
+
+    VM -->|deposit / withdraw collateral| CA
+    CA -->|custodies LP collateral| VAULT_STORE
+    VM -->|reads / updates vault state| VAULT_STORE
+
     VM -->|reads fair LP price| LP_ORACLE
-    VM -->|reads / writes| VAULT_STORE
+    RM -->|reads fair LP price| LP_ORACLE
+    LP_ORACLE -->|reads token feeds| CHAINLINK
+    LP_ORACLE -->|calls checkPrice| PRICE_GUARD
+    PRICE_GUARD -->|reads TWAP| TWAP_ADAPTER
 
-    CA_A -->|holds tokens| VAULT_STORE
-    CA_B -->|holds tokens| VAULT_STORE
-    CA_C -->|holds tokens| VAULT_STORE
-
-    LM -->|checks HF via| VM
-    LM -->|triggers Stability Pool path| SP
-    LM -->|triggers external path| LIQUIDATOR
-
-    RM -->|selects lowest-CR vault| VM
-    RM -->|burns LPUSD| LPUSD_TOKEN
-
-    SP -->|burns LPUSD on liquidation| LPUSD_TOKEN
-    SP -->|receives LP collateral| CA_A
-    SP -->|receives LP collateral| CA_B
-
-    LP_ORACLE -->|reads spot price| CHAINLINK
-    LP_ORACLE -->|reads TWAP| TWAP
-    LP_ORACLE -->|sanity check delta| PRICE_GUARD
-
-    PRICE_GUARD -->|pause market if deviation > 5%| VM
-
-    TREASURY -->|set LTV, liquidation threshold, fees| VM
-    TREASURY -->|whitelist new LP tokens| CA_A
-    GOV -->|upgrades, param changes| TREASURY
+    GOV -->|executes delayed governance actions| TREASURY
+    TREASURY -->|set risk params, oracle, SP| VM
+    TREASURY -->|configure TWAP adapters| PRICE_GUARD
+    TREASURY -->|set LP feed mapping / price guard| LP_ORACLE
