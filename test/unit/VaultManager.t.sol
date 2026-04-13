@@ -106,6 +106,16 @@ contract UnitVaultManager is Test {
   //  depositAndMint
   // ─────────────────────────────────────────────
 
+  function test_DepositAndMint_WhenContractIsPaused() external {
+    vm.prank(_governance);
+    _vault.pause();
+
+    vm.prank(_user);
+    // it reverts
+    vm.expectRevert();
+    _vault.depositAndMint(_lpToken, _DEPOSIT, 0);
+  }
+
   function test_DepositAndMint_WhenDepositAmountIsZero() external {
     vm.prank(_user);
     // it reverts
@@ -247,6 +257,15 @@ contract UnitVaultManager is Test {
     // it reverts
     vm.expectRevert(IVaultManager.VaultManager_UnsafeWithdrawal.selector);
     _vault.repayAndWithdraw(_lpToken, 0, _withdrawTooMuch);
+  }
+
+  function test_RepayAndWithdraw_WhenContractIsPaused() external whenVaultHasDebt {
+    vm.prank(_governance);
+    _vault.pause();
+
+    // it does not revert — repayment is always available
+    vm.prank(_user);
+    _vault.repayAndWithdraw(_lpToken, 50e18, 0);
   }
 
   function test_RepayAndWithdraw_WhenAllChecksPass() external whenVaultHasDebt {

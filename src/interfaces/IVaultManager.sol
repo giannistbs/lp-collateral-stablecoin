@@ -353,7 +353,7 @@ interface IVaultManager {
   //////////////////////////////////////////////////////////////*/
 
   /**
-   * @notice Pauses all state-changing operations (deposit, mint, repay, withdraw)
+   * @notice Pauses new deposits and minting. Repayment and collateral withdrawal remain available.
    * @dev Only callable by GUARDIAN_ROLE
    */
   function pause() external;

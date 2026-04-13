@@ -1,0 +1,48 @@
+UnitProtocolTimelock::constructor
+├── when admin is zero address
+│   └── it reverts with ProtocolTimelock_ZeroAddress
+├── when proposer is zero address
+│   └── it reverts with ProtocolTimelock_ZeroAddress
+├── when executor is zero address
+│   └── it reverts with ProtocolTimelock_ZeroAddress
+└── when all params are valid
+    ├── it grants DEFAULT_ADMIN_ROLE to admin
+    ├── it grants PROPOSER_ROLE to proposer
+    ├── it grants CANCELLER_ROLE to proposer
+    └── it grants EXECUTOR_ROLE to executor
+
+
+UnitProtocolTimelock::queue
+├── when caller lacks proposer role
+│   └── it reverts
+├── when operation is already queued
+│   └── it reverts with ProtocolTimelock_AlreadyQueued
+└── when all conditions are met
+    ├── it stores executeAfter as block timestamp plus MIN_DELAY
+    ├── it returns the operation id
+    └── it emits OperationQueued
+
+
+UnitProtocolTimelock::execute
+├── when caller lacks executor role
+│   └── it reverts
+├── when operation is not queued
+│   └── it reverts with ProtocolTimelock_NotQueued
+├── when delay has not elapsed
+│   └── it reverts with ProtocolTimelock_NotReady
+├── when call to target fails
+│   └── it reverts with ProtocolTimelock_ExecutionFailed
+└── when all conditions are met
+    ├── it deletes the operation
+    ├── it calls target with data
+    └── it emits OperationExecuted
+
+
+UnitProtocolTimelock::cancel
+├── when caller lacks canceller role
+│   └── it reverts
+├── when operation is not queued
+│   └── it reverts with ProtocolTimelock_NotQueued
+└── when operation is queued
+    ├── it deletes the operation
+    └── it emits OperationCancelled

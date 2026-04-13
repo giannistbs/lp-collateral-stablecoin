@@ -8,6 +8,8 @@ UnitVaultManager::constructor
 
 
 UnitVaultManager::depositAndMint
+├── when contract is paused
+│   └── it reverts
 ├── when deposit amount is zero
 │   └── it reverts
 ├── when no adapter is registered
@@ -37,6 +39,8 @@ UnitVaultManager::repayAndWithdraw
 │   └── it reverts
 ├── when withdrawal would make health factor below one
 │   └── it reverts
+├── when contract is paused
+│   └── it does not revert
 └── when all checks pass
     ├── it burns LPUSD from user
     ├── it reduces vault debt

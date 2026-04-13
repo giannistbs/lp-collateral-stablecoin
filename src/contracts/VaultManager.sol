@@ -163,7 +163,7 @@ contract VaultManager is AccessControl, Pausable, IVaultManager {
   }
 
   /// @inheritdoc IVaultManager
-  function repayAndWithdraw(address _lpToken, uint256 _repayAmount, uint256 _withdrawAmount) external whenNotPaused {
+  function repayAndWithdraw(address _lpToken, uint256 _repayAmount, uint256 _withdrawAmount) external {
     if (_repayAmount == 0 && _withdrawAmount == 0) revert VaultManager_ZeroAmount();
 
     Vault storage _vault = _vaults[msg.sender][_lpToken];
