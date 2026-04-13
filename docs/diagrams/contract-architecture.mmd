@@ -16,7 +16,8 @@ graph TB
 
     subgraph collateral [CollateralLayer]
         CA["CollateralAdapter(s)\nWhitelisted LP Markets"]
-        VAULT_STORE[("Vault Storage\nper user + LP token")]
+        VAULT_STORE[("Vault Storage\ninside VaultManager")]
+        LP_CUSTODY[("LP Collateral Custody\nheld by adapters")]
     end
 
     subgraph oracle [OracleLayer]
@@ -27,8 +28,8 @@ graph TB
     end
 
     subgraph gov [Governance]
-        TREASURY[TreasuryMultisig\nRisk Parameters]
-        GOV[Governance Timelock]
+        GOV_ADMIN((Owner / Role Holder))
+        TIMELOCK[ProtocolTimelock\n48h Delayed Executor]
     end
 
     USER -->|deposit LP / mint LPUSD| VM
@@ -40,24 +41,26 @@ graph TB
 
     LM -->|checks health factor| VM
     LM -->|SP path: offset debt| SP
-    LM -->|fallback: settle external liquidation| VM
-    RM -->|"redeemFromVault (sorted users input)"| VM
+    LM -->|external path: settle liquidation| VM
+    RM -->|redeemFromVault| VM
 
     SP -->|liquidateFromStabilityPool| VM
     VM -->|mint / burn authority| LPUSD_TOKEN
-    SP -->|transfers LPUSD in/out| LPUSD_TOKEN
+    SP -->|holds depositor LPUSD| LPUSD_TOKEN
 
     VM -->|deposit / withdraw collateral| CA
-    CA -->|custodies LP collateral| VAULT_STORE
     VM -->|reads / updates vault state| VAULT_STORE
+    CA -->|custodies LP collateral| LP_CUSTODY
 
     VM -->|reads fair LP price| LP_ORACLE
+    LM -->|reads fair LP price for external path| LP_ORACLE
     RM -->|reads fair LP price| LP_ORACLE
     LP_ORACLE -->|reads token feeds| CHAINLINK
     LP_ORACLE -->|calls checkPrice| PRICE_GUARD
     PRICE_GUARD -->|reads TWAP| TWAP_ADAPTER
 
-    GOV -->|executes delayed governance actions| TREASURY
-    TREASURY -->|set risk params, oracle, SP| VM
-    TREASURY -->|configure TWAP adapters| PRICE_GUARD
-    TREASURY -->|set LP feed mapping / price guard| LP_ORACLE
+    GOV_ADMIN -->|governance/admin config| VM
+    GOV_ADMIN -->|owner config| PRICE_GUARD
+    GOV_ADMIN -->|owner config| LP_ORACLE
+    GOV_ADMIN -->|governance/admin config| SP
+    GOV_ADMIN -. optional delayed execution .-> TIMELOCK

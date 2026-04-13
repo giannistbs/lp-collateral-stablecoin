@@ -8,16 +8,21 @@ sequenceDiagram
 
     Note over Redeemer: LPUSD market price < $1\nArbitrage opportunity
 
-    Redeemer->>RM: redeem(lpusdAmount)
-    RM->>RM: fee = (baseRate + 0.5%) * lpusdAmount
-    RM->>RM: netCollateralValue = lpusdAmount - fee
-    RM->>VM: selectLowestCRVaults(netCollateralValue)
-    loop for each selected vault (lowest CR first)
-        VM->>Oracle: fairLPPrice(vaultLP)
-        VM->>VM: calculate LP amount to cover portion of redemption
-        VM->>VM: reduce vault.debt by portion
-        VM->>CA: transfer(Redeemer, lpAmount)
+    Redeemer->>RM: redeem(lpToken, lpusdAmount, users[])
+    RM->>RM: currentRate = decayedBaseRate()
+    RM->>RM: effectiveFee = min(currentRate + 0.5%, 10%)
+    RM->>Oracle: fairLPPrice(lpToken)
+    loop for each user in ascending CR order
+        RM->>VM: getVault(user, lpToken)
+        RM->>RM: validate CR ordering on-chain
+        RM->>RM: debtPortion = min(remaining, vault.debt)
+        RM->>RM: collateralOut = debtPortion * (1 - fee) / price
+        RM->>VM: redeemFromVault(user, lpToken, redeemer, debtPortion, collateralOut)
+        VM->>LPUSD: burn(redeemer, debtPortion)
+        VM->>CA: withdraw(redeemer, collateralOut)
     end
-    RM->>LPUSD: burn(Redeemer, lpusdAmount)
+    alt hints exhausted before amount is fully consumed
+        RM-->>Redeemer: revert RedemptionManager_InsufficientVaults
+    end
     RM->>RM: baseRate += spike(redemptionAmount)
-    Note over Redeemer: Receives $1 of LP collateral\nper LPUSD burned (minus fee)
+    Note over Redeemer: Caller supplies sorted vault hints.\nFee stays in the vault because less collateral is withdrawn than debt retired.

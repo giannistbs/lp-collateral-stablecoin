@@ -8,24 +8,32 @@ sequenceDiagram
     participant CA as CollateralAdapter
 
     Keeper->>LM: liquidate(user, lpToken)
-    LM->>VM: getVault(user, lpToken)
-    LM->>Oracle: fairLPPrice(lpToken)
-    LM->>LM: HF = (collateralValue * liqThreshold) / debt
+    LM->>VM: healthFactor(user, lpToken)
     alt HF >= 1.0
-        LM-->>Keeper: revert NOT_LIQUIDATABLE
+        LM-->>Keeper: revert LiquidationManager_VaultNotLiquidatable
     end
-    LM->>SP: availableLPUSD()
-    alt SP balance >= vault.debt
-        LM->>SP: burnForLiquidation(vault.debt)
-        SP->>LPUSD: burn(SP, vault.debt)
-        LM->>CA: transferCollateral(SP, collateralAmount)
-        Note over SP: SP depositors receive LP tokens\n(collateral at ~5% discount = reward)
-        LM->>Keeper: emit Liquidated + keeper gas reward
-    else SP insufficient → external path
-        LM->>Keeper: repay LPUSD yourself
-        Keeper->>LPUSD: transferFrom(Keeper, LM, debt)
-        LM->>LPUSD: burn(LM, debt)
-        LM->>CA: transferCollateral(Keeper, collateral * 1.10)
-        Note over Keeper: Keeper earns 10% liquidation bonus
+    LM->>VM: getVault(user, lpToken)
+    LM->>SP: totalDeposits()
+    alt SP deposits >= vault.debt
+        LM->>SP: offset(user, lpToken, debt, collateral)
+        SP->>VM: liquidateFromStabilityPool(user, lpToken, debt, collateral)
+        VM->>LPUSD: burn(SP, debt)
+        VM->>CA: withdraw(SP, collateral)
+        CA-->>SP: LP collateral received
+        SP->>SP: totalDeposits -= debt
+        SP->>SP: rewardPerShare[lpToken] += collateral / totalShares
+        Note over SP: Depositors keep shares, pool deposits shrink,\nand LP collateral becomes claimable rewards
+    else SP insufficient
+        LM->>Oracle: fairLPPrice(lpToken)
+        LM->>LM: debtInLP = debt / price
+        LM->>LM: collateralToLiquidator = min(collateral, debtInLP * 1.10)
+        LM->>LM: collateralReturned = collateral - collateralToLiquidator
+        LM->>LPUSD: transferFrom(keeper, LM, debt)
+        LM->>VM: liquidateExternal(user, lpToken, keeper, debt, collateralToLiquidator, collateralReturned)
+        VM->>LPUSD: burn(LM, debt)
+        VM->>CA: withdraw(keeper, collateralToLiquidator)
+        alt excess collateral remains
+            VM->>CA: withdraw(user, collateralReturned)
+        end
+        Note over Keeper: Keeper receives LP collateral worth debt + 10% bonus,\ncapped by vault collateral
     end
-    LM->>VM: closeVault(user, lpToken)

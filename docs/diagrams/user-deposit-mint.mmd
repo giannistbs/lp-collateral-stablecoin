@@ -7,23 +7,33 @@ sequenceDiagram
     participant LPUSD as LPUSD Token
 
     User->>VM: depositAndMint(lpToken, amount, mintAmount)
-    VM->>Oracle: fairLPPrice(lpToken)
-    Oracle->>PG: checkDeviation(spotPrice, twapPrice)
-    alt deviation > 5%
-        PG-->>VM: revert ORACLE_STALE
-        VM-->>User: revert
-    else oracle healthy
-        PG-->>Oracle: ok
-        Oracle-->>VM: priceUSD
-    end
-    VM->>VM: collateralValueUSD = amount * priceUSD
-    VM->>VM: maxMintable = collateralValueUSD * LTV
-    alt mintAmount > maxMintable
-        VM-->>User: revert EXCEEDS_LTV
-    end
-    VM->>CA: transferFrom(User, adapter, amount)
+    VM->>CA: deposit(user, amount)
+    CA->>CA: safeTransferFrom(user, adapter, amount)
     CA-->>VM: ok
-    VM->>VM: openOrUpdateVault(user, lpToken, amount, mintAmount)
-    VM->>LPUSD: mint(user, mintAmount - mintFee)
-    VM->>LPUSD: mint(treasury, mintFee)
-    LPUSD-->>User: LPUSD tokens received
+    alt mintAmount > 0
+        VM->>Oracle: fairLPPrice(lpToken)
+        Oracle->>PG: checkPrice(lpToken, fairPrice)
+        alt TWAP missing or deviation too high
+            PG-->>Oracle: revert
+            Oracle-->>VM: revert LPOracle_StalePrice
+            VM-->>User: revert
+        else oracle healthy
+            PG-->>Oracle: ok
+            Oracle-->>VM: priceUSD
+        end
+        VM->>VM: totalCollateral = existingCollateral + amount
+        VM->>VM: newDebt = existingDebt + mintAmount
+        VM->>VM: maxMintable = totalCollateral * priceUSD * maxLTV
+        alt newDebt > maxMintable
+            VM-->>User: revert VaultManager_ExceedsLTV
+        else totalDebt + mintAmount > debtCeiling
+            VM-->>User: revert VaultManager_ExceedsDebtCeiling
+        else valid mint
+            VM->>VM: update vault + totalDebt
+            VM->>LPUSD: mint(treasury, mintFee)
+            VM->>LPUSD: mint(user, mintAmount - mintFee)
+            LPUSD-->>User: LPUSD tokens received
+        end
+    else deposit only
+        VM->>VM: update collateral only
+    end

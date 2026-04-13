@@ -3,16 +3,21 @@ sequenceDiagram
     participant VM as VaultManager
     participant LPUSD as LPUSD Token
     participant CA as CollateralAdapter
+    participant Oracle as LPOracle
 
     User->>VM: repayAndWithdraw(lpToken, repayAmount, withdrawAmount)
     VM->>VM: vault = getVault(user, lpToken)
     VM->>VM: check repayAmount <= vault.debt
     VM->>LPUSD: burn(user, repayAmount)
     VM->>VM: vault.debt -= repayAmount
-    VM->>Oracle: fairLPPrice(lpToken)
-    VM->>VM: newHF = (remainingCollateral * liquidationThreshold) / remainingDebt
-    alt newHF < 1.0 after withdrawal
-        VM-->>User: revert UNSAFE_WITHDRAWAL
+    alt withdrawAmount > 0 and debt remains
+        VM->>Oracle: fairLPPrice(lpToken)
+        VM->>VM: newHF = (remainingCollateral * liqThreshold) / remainingDebt
+        alt newHF < 1.0 after withdrawal
+            VM-->>User: revert VaultManager_UnsafeWithdrawal
+        end
     end
-    VM->>CA: transfer(user, withdrawAmount)
-    CA-->>User: LP tokens returned
+    alt withdrawAmount > 0
+        VM->>CA: withdraw(user, withdrawAmount)
+        CA-->>User: LP tokens returned
+    end
