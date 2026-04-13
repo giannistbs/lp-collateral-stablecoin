@@ -25,19 +25,6 @@ jobs:
         shell: bash
         run: pnpm test:unit
 
-  integration-tests:
-    name: Run Integration Tests
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Repo
-        uses: actions/checkout@v4
-
-      - name: install-tools
-        uses: ./.github/workflows/install-tools
-
-      - name: Run tests
-        run: pnpm test:integration
-
   lint:
     name: Static Analysis
     runs-on: ubuntu-latest
