@@ -76,6 +76,7 @@ contract LiquidationManager is ILiquidationManager {
     uint256 _debt = _vault.debt;
     uint256 _collateral = _vault.collateralAmount;
 
+    // Current routing only uses the Stability Pool when it can cover the full debt; no partial offset.
     if (stabilityPool.totalDeposits() >= _debt) {
       _liquidateViaSP(_user, _lpToken, _debt, _collateral);
     } else {
