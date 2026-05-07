@@ -11,7 +11,7 @@ import {IVaultManager} from 'interfaces/IVaultManager.sol';
  *         liquidations either through the Stability Pool (preferred) or an external liquidator
  *         (fallback when the pool has insufficient deposits).
  *
- *         Stability Pool path: burns LPUSD from the pool and sends all collateral to SP depositors.
+ *         Stability Pool path: burns LPUSD from the pool and sends discounted collateral to SP depositors.
  *         External path: the caller (liquidator) repays the debt and receives collateral plus a
  *         10% bonus; any excess collateral is returned to the vault owner.
  */
@@ -70,7 +70,7 @@ interface ILiquidationManager {
    * @notice Liquidates an undercollateralized vault
    * @dev Routing logic:
    *      1. If `stabilityPool.totalDeposits() >= vault.debt`, uses the SP path:
-   *         calls `stabilityPool.offset()` which burns pool LPUSD and receives all collateral.
+   *         calls `stabilityPool.offset()` which burns pool LPUSD and receives discounted collateral.
    *      2. Otherwise, uses the external path:
    *         pulls LPUSD from msg.sender, calls `vaultManager.liquidateExternal()`.
    *         Liquidator receives collateral worth debt + 10%; excess returned to vault owner.

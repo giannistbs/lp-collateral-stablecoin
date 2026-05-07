@@ -3,6 +3,7 @@ pragma solidity 0.8.30;
 
 import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import {SafeERC20} from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
+import {Math} from '@openzeppelin/contracts/utils/math/Math.sol';
 import {ILiquidationManager} from 'interfaces/ILiquidationManager.sol';
 import {IStabilityPool} from 'interfaces/IStabilityPool.sol';
 import {IVaultManager} from 'interfaces/IVaultManager.sol';
@@ -13,7 +14,8 @@ import {IVaultManager} from 'interfaces/IVaultManager.sol';
  * @notice Two-path liquidation engine for the LP-collateral stablecoin protocol.
  *
  *         Stability Pool path (preferred): when the pool holds enough LPUSD to cover the vault's
- *         debt, all debt is burned from the pool and all collateral is sent to SP depositors.
+ *         debt, all debt is burned from the pool and collateral is sent to SP depositors at a
+ *         5% discount, capped at the vault's available collateral.
  *
  *         External path (fallback): when the pool is insufficient, the caller (liquidator) must
  *         hold enough LPUSD and approve this contract. The liquidator receives collateral worth
@@ -36,6 +38,9 @@ contract LiquidationManager is ILiquidationManager {
 
   /// @notice Liquidation bonus for external liquidators in basis points (10%)
   uint256 internal constant _LIQUIDATOR_BONUS_BPS = 1000;
+
+  /// @notice Discount granted to Stability Pool depositors in basis points (5%)
+  uint256 internal constant _SP_DISCOUNT_BPS = 500;
 
   /*///////////////////////////////////////////////////////////////
                           IMMUTABLES
@@ -98,11 +103,17 @@ contract LiquidationManager is ILiquidationManager {
    * @param _user Vault owner
    * @param _lpToken Collateral LP token
    * @param _debt Full vault debt to burn
-   * @param _collateral Full vault collateral to send to the SP
+   * @param _collateral Full vault collateral available
    */
   function _liquidateViaSP(address _user, address _lpToken, uint256 _debt, uint256 _collateral) internal {
-    stabilityPool.offset(_user, _lpToken, _debt, _collateral);
-    emit LiquidatedViaStabilityPool(_user, _lpToken, _debt, _collateral);
+    uint256 _price = vaultManager.oracle().fairLPPrice(_lpToken);
+
+    uint256 _collateralToSP =
+      Math.mulDiv(_debt, _HF_SCALE * _BPS_DENOMINATOR, _price * (_BPS_DENOMINATOR - _SP_DISCOUNT_BPS));
+    if (_collateralToSP > _collateral) _collateralToSP = _collateral;
+
+    stabilityPool.offset(_user, _lpToken, _debt, _collateralToSP);
+    emit LiquidatedViaStabilityPool(_user, _lpToken, _debt, _collateralToSP);
   }
 
   /**

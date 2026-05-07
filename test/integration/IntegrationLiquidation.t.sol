@@ -15,6 +15,7 @@ contract IntegrationLiquidation is IntegrationProtocol {
   // Vault opened at $2: 100 LP * $2 * 70% = $140 max, mint $70
   uint256 internal constant _COLLATERAL = 100e18;
   uint256 internal constant _DEBT = 70e18;
+  uint256 internal constant _SP_DISCOUNT_BPS = 500;
   // LIQ_PRICE: 70 / (100 * 0.75) = $0.933... we need price < this
   // At $0.8: HF = (100 * 0.8 * 7500) / (70 * 10000) = 0.857 < 1 → liquidatable
   uint256 internal constant _LIQ_PRICE = 0.8e18;
@@ -29,20 +30,21 @@ contract IntegrationLiquidation is IntegrationProtocol {
     _setPrice(_LIQ_PRICE);
 
     uint256 _spDepositBefore = _stabilityPool.depositBalanceOf(_spDepositor);
+    uint256 _expectedToSP = (_DEBT * 1e18 * _BPS_DENOMINATOR) / (_LIQ_PRICE * (_BPS_DENOMINATOR - _SP_DISCOUNT_BPS));
 
     _liquidationManager.liquidate(_borrower, address(_lpToken));
 
     // SP LPUSD was consumed by the liquidation
     assertEq(_stabilityPool.totalDeposits(), 0);
-    // Vault is closed
+    // Vault debt is closed; excess collateral remains withdrawable by the borrower.
     IVaultManager.Vault memory _vault = _vaultManager.getVault(_borrower, address(_lpToken));
     assertEq(_vault.debt, 0);
-    assertEq(_vault.collateralAmount, 0);
+    assertEq(_vault.collateralAmount, _COLLATERAL - _expectedToSP);
 
     // SP depositor can claim the collateral
     uint256 _claimable = _stabilityPool.claimableCollateral(_spDepositor, address(_lpToken));
     assertGt(_claimable, 0);
-    assertEq(_claimable, _COLLATERAL);
+    assertEq(_claimable, _expectedToSP);
     // Initial deposit balance was consumed
     assertLt(_stabilityPool.depositBalanceOf(_spDepositor), _spDepositBefore);
   }
@@ -112,6 +114,7 @@ contract IntegrationLiquidation is IntegrationProtocol {
     // Fund SP with enough to cover all three
     _depositIntoSP(_spDepositor, _DEBT * 3);
     _setPrice(_LIQ_PRICE);
+    uint256 _expectedToSP = (_DEBT * 1e18 * _BPS_DENOMINATOR) / (_LIQ_PRICE * (_BPS_DENOMINATOR - _SP_DISCOUNT_BPS));
 
     _liquidationManager.liquidate(_borrower, address(_lpToken));
     _liquidationManager.liquidate(_borrower2, address(_lpToken));
@@ -122,8 +125,12 @@ contract IntegrationLiquidation is IntegrationProtocol {
     assertEq(_vaultManager.getVault(_borrower2, address(_lpToken)).debt, 0);
     assertEq(_vaultManager.getVault(_borrower3, address(_lpToken)).debt, 0);
 
-    // All collateral is claimable by the SP depositor
-    assertEq(_stabilityPool.claimableCollateral(_spDepositor, address(_lpToken)), _COLLATERAL * 3);
+    assertEq(_vaultManager.getVault(_borrower, address(_lpToken)).collateralAmount, _COLLATERAL - _expectedToSP);
+    assertEq(_vaultManager.getVault(_borrower2, address(_lpToken)).collateralAmount, _COLLATERAL - _expectedToSP);
+    assertEq(_vaultManager.getVault(_borrower3, address(_lpToken)).collateralAmount, _COLLATERAL - _expectedToSP);
+
+    // Discounted collateral is claimable by the SP depositor
+    assertApproxEqAbs(_stabilityPool.claimableCollateral(_spDepositor, address(_lpToken)), _expectedToSP * 3, 3);
   }
 
   function test_Liquidation_StableStableTier() external {

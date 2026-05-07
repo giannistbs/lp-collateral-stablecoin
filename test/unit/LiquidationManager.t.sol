@@ -38,6 +38,7 @@ contract UnitLiquidationManager is Test {
   uint256 internal constant _COLLATERAL = 100e18; // 100 LP tokens
   uint256 internal constant _DEBT = 70e18; // 70 LPUSD (70% LTV at $2 price)
   uint256 internal constant _HF_SCALE = 1e18;
+  uint256 internal constant _SP_DISCOUNT_BPS = 500;
 
   // Liquidatable price: 0.8 → HF = (100 * 0.8 * 7500 / 10000) / 70 ≈ 0.857 < 1
   uint256 internal constant _LIQ_PRICE = 0.8e18;
@@ -160,18 +161,20 @@ contract UnitLiquidationManager is Test {
     _openVault(_user, _COLLATERAL, _DEBT);
     _oracle.setPrice(_LIQ_PRICE);
 
+    uint256 _expectedToSP = (_DEBT * _HF_SCALE * 10_000) / (_LIQ_PRICE * (10_000 - _SP_DISCOUNT_BPS));
+
     vm.expectEmit(true, true, false, true, address(_liquidationManager));
-    emit ILiquidationManager.LiquidatedViaStabilityPool(_user, address(_lpToken), _DEBT, _COLLATERAL);
+    emit ILiquidationManager.LiquidatedViaStabilityPool(_user, address(_lpToken), _DEBT, _expectedToSP);
 
     vm.prank(_liquidator);
     _liquidationManager.liquidate(_user, address(_lpToken));
 
-    // it calls stabilityPool.offset with full debt and collateral → vault is cleared
+    // it calls stabilityPool.offset with debt value at a 5% discount
     IVaultManager.Vault memory _v = _vaultManager.getVault(_user, address(_lpToken));
     assertEq(_v.debt, 0);
-    assertEq(_v.collateralAmount, 0);
+    assertEq(_v.collateralAmount, _COLLATERAL - _expectedToSP);
     // SP received the collateral
-    assertEq(_lpToken.balanceOf(address(_stabilityPool)), _COLLATERAL);
+    assertEq(_lpToken.balanceOf(address(_stabilityPool)), _expectedToSP);
   }
 
   modifier whenStabilityPoolHasInsufficientDeposits() {
