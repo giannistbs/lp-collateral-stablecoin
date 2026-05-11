@@ -42,6 +42,9 @@ contract LiquidationManager is ILiquidationManager {
   /// @notice Discount granted to Stability Pool depositors in basis points (5%)
   uint256 internal constant _SP_DISCOUNT_BPS = 500;
 
+  /// @notice Fixed LPUSD reward paid to keepers after a successful liquidation
+  uint256 internal constant _KEEPER_REWARD = 1e18;
+
   /*///////////////////////////////////////////////////////////////
                           IMMUTABLES
   //////////////////////////////////////////////////////////////*/
@@ -87,6 +90,8 @@ contract LiquidationManager is ILiquidationManager {
     } else {
       _liquidateExternal(_user, _lpToken, _debt, _collateral);
     }
+
+    _payKeeperReward(msg.sender);
   }
 
   /// @inheritdoc ILiquidationManager
@@ -142,5 +147,20 @@ contract LiquidationManager is ILiquidationManager {
     vaultManager.liquidateExternal(_user, _lpToken, msg.sender, _debt, _collateralToLiquidator, _collateralReturned);
 
     emit LiquidatedExternally(_user, _lpToken, msg.sender, _debt, _collateralToLiquidator, _collateralReturned);
+  }
+
+  /**
+   * @notice Pays a fixed keeper reward from the protocol reserve when funded and approved.
+   * @param _keeper Liquidation caller
+   */
+  function _payKeeperReward(address _keeper) internal {
+    IERC20 _lpusd = IERC20(address(vaultManager.LPUSD()));
+    address _reserve = vaultManager.treasury();
+
+    if (_lpusd.balanceOf(_reserve) < _KEEPER_REWARD) return;
+    if (_lpusd.allowance(_reserve, address(this)) < _KEEPER_REWARD) return;
+
+    _lpusd.safeTransferFrom(_reserve, _keeper, _KEEPER_REWARD);
+    emit KeeperRewardPaid(_keeper, _KEEPER_REWARD);
   }
 }

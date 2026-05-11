@@ -49,6 +49,13 @@ interface ILiquidationManager {
     uint256 _collateralReturned
   );
 
+  /**
+   * @notice Emitted when a successful liquidation pays an LPUSD reward to the keeper
+   * @param _keeper Address that called liquidate()
+   * @param _amount LPUSD amount paid from the protocol reserve
+   */
+  event KeeperRewardPaid(address indexed _keeper, uint256 _amount);
+
   /*///////////////////////////////////////////////////////////////
                           ERRORS
   //////////////////////////////////////////////////////////////*/

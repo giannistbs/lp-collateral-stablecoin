@@ -39,6 +39,7 @@ contract UnitLiquidationManager is Test {
   uint256 internal constant _DEBT = 70e18; // 70 LPUSD (70% LTV at $2 price)
   uint256 internal constant _HF_SCALE = 1e18;
   uint256 internal constant _SP_DISCOUNT_BPS = 500;
+  uint256 internal constant _KEEPER_REWARD = 1e18;
 
   // Liquidatable price: 0.8 → HF = (100 * 0.8 * 7500 / 10000) / 70 ≈ 0.857 < 1
   uint256 internal constant _LIQ_PRICE = 0.8e18;
@@ -284,6 +285,37 @@ contract UnitLiquidationManager is Test {
     assertEq(_lpToken.balanceOf(_liquidator), _COLLATERAL);
     // vault owner receives nothing extra (zero collateralReturned)
     assertEq(_lpToken.balanceOf(_user), _userLPBefore);
+  }
+
+  function test_Liquidate_WhenTreasuryRewardIsFunded() external whenVaultIsLiquidatable {
+    _depositIntoPool(_spDepositor, _DEBT);
+    _openVault(_user, _COLLATERAL, _DEBT);
+    _oracle.setPrice(_LIQ_PRICE);
+
+    deal(address(_lpusd), _treasury, _KEEPER_REWARD);
+    vm.prank(_treasury);
+    _lpusd.approve(address(_liquidationManager), _KEEPER_REWARD);
+
+    vm.expectEmit(true, false, false, true, address(_liquidationManager));
+    emit ILiquidationManager.KeeperRewardPaid(_liquidator, _KEEPER_REWARD);
+
+    vm.prank(_liquidator);
+    _liquidationManager.liquidate(_user, address(_lpToken));
+
+    assertEq(_lpusd.balanceOf(_liquidator), _KEEPER_REWARD);
+    assertEq(_lpusd.balanceOf(_treasury), 0);
+  }
+
+  function test_Liquidate_WhenTreasuryRewardIsNotFunded() external whenVaultIsLiquidatable {
+    _depositIntoPool(_spDepositor, _DEBT);
+    _openVault(_user, _COLLATERAL, _DEBT);
+    _oracle.setPrice(_LIQ_PRICE);
+
+    vm.prank(_liquidator);
+    _liquidationManager.liquidate(_user, address(_lpToken));
+
+    assertEq(_lpusd.balanceOf(_liquidator), 0);
+    assertEq(_vaultManager.getVault(_user, address(_lpToken)).debt, 0);
   }
 
   // ─────────────────────────────────────────────
